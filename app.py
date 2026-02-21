@@ -18,12 +18,12 @@ LANG_DICT = {
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
         "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", "auto_rotate": "🔄 Auto-Rotation erlauben",
-        "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitt-Muster ändern",
+        "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)",
         "price_total": "Gesamtpreis Fenster", "win_area": "Fensterfläche", "wall_area": "Wandfläche", "fill_rate": "Füllgrad",
         "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
-        "gaps_header": "🟥 Benötigte Zuschnitte (100% Abdeckung)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
+        "gaps_header": "🟥 Benötigte Zuschnitte (100% Lückenlos)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
         "fill": "Zuschnitt Panel",
-        "col_layer": "👁️ Sichtbar", "col_fix": "📌 Fix", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", 
+        "col_layer": "👁️ Sichtbar", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", 
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
     }
 }
@@ -39,15 +39,13 @@ if 'pos_counter' not in st.session_state: st.session_state['pos_counter'] = 1
 if 'layout_seed' not in st.session_state: st.session_state['layout_seed'] = 42 
 if 'gap_toggle' not in st.session_state: st.session_state['gap_toggle'] = False
 
-# SLIDER SYNCHRONISATION
-if 'w_val' not in st.session_state: st.session_state.w_val = 4000
-if 'h_val' not in st.session_state: st.session_state.h_val = 3000
+if 'wall_w' not in st.session_state: st.session_state.wall_w = 4000
+if 'wall_h' not in st.session_state: st.session_state.wall_h = 3000
 
-def sync_w_sli(): st.session_state.w_val = st.session_state.w_sli
-def sync_w_num(): st.session_state.w_val = st.session_state.w_num
-def sync_h_sli(): st.session_state.h_val = st.session_state.h_sli
-def sync_h_num(): st.session_state.h_val = st.session_state.h_num
-
+def sync_w_sli(): st.session_state.wall_w = st.session_state.w_sli
+def sync_w_num(): st.session_state.wall_w = st.session_state.w_num
+def sync_h_sli(): st.session_state.wall_h = st.session_state.h_sli
+def sync_h_num(): st.session_state.wall_h = st.session_state.h_num
 def shuffle_layout(): st.session_state['layout_seed'] = random.randint(1, 10000)
 def optimize_gaps(): st.session_state['gap_toggle'] = not st.session_state['gap_toggle']
 
@@ -78,7 +76,7 @@ def harvest_materials(land, plz, radius, use_reuse, use_new):
                                 'id': item_id, 'pos_label': pos_label, 'w': w, 'h': h, 'type': 'Fenster', 'color': color, 
                                 'price': price, 'source': res['title'][:30] + '...', 'condition': condition, 'link': res['href']
                             })
-                            st.session_state['item_states'][item_id] = {'visible': True, 'fixed': False, 'force': False, 'rotated': False, 'man_x': None, 'man_y': None}
+                            st.session_state['item_states'][item_id] = {'visible': True, 'pinned': False, 'force': False, 'rotated': False, 'man_x': None, 'man_y': None}
         except Exception: pass 
             
     if len(materials) < 3: 
@@ -90,9 +88,8 @@ def harvest_materials(land, plz, radius, use_reuse, use_new):
             item_id = uuid.uuid4().hex
             pos_label = f"P{st.session_state['pos_counter']}"
             st.session_state['pos_counter'] += 1
-            
             materials.append({'id': item_id, 'pos_label': pos_label, 'w': w, 'h': h, 'type': 'Fenster', 'color': col, 'price': pr, 'source': 'Notfall-Reserve', 'condition': cond, 'link': ''})
-            st.session_state['item_states'][item_id] = {'visible': True, 'fixed': False, 'force': False, 'rotated': False, 'man_x': None, 'man_y': None}
+            st.session_state['item_states'][item_id] = {'visible': True, 'pinned': False, 'force': False, 'rotated': False, 'man_x': None, 'man_y': None}
     return materials
 
 # --- ALGORITHMEN ---
@@ -101,62 +98,52 @@ def check_overlap(x, y, w, h, placed):
         if not (x + w <= p['x'] or x >= p['x'] + p['w'] or y + h <= p['y'] or y >= p['y'] + p['h']): return True
     return False
 
-def place_with_docking(item, target_x, target_y, wall_w, wall_h, placed_items, step=50):
-    # Wenn die Ziel-Koordinate perfekt gültig ist (Keine Überschneidung, innerhalb der Wand)
-    if target_x >= 0 and target_y >= 0 and target_x + item['w'] <= wall_w and target_y + item['h'] <= wall_h:
-        if not check_overlap(target_x, target_y, item['w'], item['h'], placed_items):
-            return target_x, target_y
-
-    # KI-KORREKTUR: Suche nach dem NÄCHSTEN gültigen Platz um das Ziel herum (Docking)
-    best_x, best_y = None, None
-    min_dist = float('inf')
-    
-    # Rasterweite anpassen bei Riesenwänden
-    search_step = step if wall_w < 10000 else 100
-
-    for y in range(0, wall_h - item['h'] + 1, search_step):
-        for x in range(0, wall_w - item['w'] + 1, search_step):
-            if not check_overlap(x, y, item['w'], item['h'], placed_items):
-                dist = (x - target_x)**2 + (y - target_y)**2
-                if dist < min_dist:
-                    min_dist = dist
-                    best_x, best_y = x, y
-
-    return best_x, best_y
-
 def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, randomness, seed):
     random.seed(seed)
     placed_items = []
-    dynamic_items = []
+    
+    # 1. Manuell gepinnte Fenster (KI-Docking & Bounds Check)
+    pinned_items = [i for i in items if st.session_state['item_states'][i['id']].get('pinned')]
+    dynamic_items = [i for i in items if not st.session_state['item_states'][i['id']].get('pinned')]
+    
     fixed_x, fixed_y = [], []
     
-    # 1. FIXIERTE FENSTER (Mit Auto-Docking Korrektur)
-    for item in items:
+    for item in pinned_items:
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
-        dyn_item = {**item, 'w': eff_w, 'h': eff_h, '_user_rotated': state.get('rotated')}
+        dyn_item = {**item, 'w': eff_w, 'h': eff_h, '_user_rotated': state.get('rotated'), 'is_pinned': True}
         
-        if state.get('fixed'):
-            tx, ty = int(state.get('man_x', 0) or 0), int(state.get('man_y', 0) or 0)
-            
-            # KI versucht es zu setzen, korrigiert bei Überlappung
-            actual_x, actual_y = place_with_docking(dyn_item, tx, ty, wall_w, wall_h, placed_items, step=50)
-            
-            if actual_x is not None:
-                placed_items.append({**dyn_item, 'x': actual_x, 'y': actual_y, 'pinned': True})
-                fixed_x.append(actual_x + eff_w / 2)
-                fixed_y.append(actual_y + eff_h / 2)
-                
-                # Feedback an die Matrix: Trägt die korrigierten Koordinaten ein
-                st.session_state['item_states'][item['id']]['man_x'] = actual_x
-                st.session_state['item_states'][item['id']]['man_y'] = actual_y
+        # 1. Bounds Correction (Zwingt das Fenster hart in die Wand)
+        target_x = max(0, min(state.get('man_x') or 0, wall_w - eff_w))
+        target_y = max(0, min(state.get('man_y') or 0, wall_h - eff_h))
+        
+        # 2. Overlap Correction (Docking Algorithmus)
+        if not check_overlap(target_x, target_y, eff_w, eff_h, placed_items):
+            final_x, final_y = target_x, target_y
         else:
-            dynamic_items.append(dyn_item)
+            best_x, best_y = target_x, target_y
+            min_dist = float('inf')
+            step = 50
+            for r in range(0, wall_h - eff_h + 1, step):
+                for c in range(0, wall_w - eff_w + 1, step):
+                    if not check_overlap(c, r, eff_w, eff_h, placed_items):
+                        dist = (c - target_x)**2 + (r - target_y)**2
+                        if dist < min_dist:
+                            min_dist = dist
+                            best_x, best_y = c, r
+            final_x, final_y = best_x, best_y
+            
+        placed_items.append({**dyn_item, 'x': final_x, 'y': final_y})
+        fixed_x.append(final_x + eff_w / 2)
+        fixed_y.append(final_y + eff_h / 2)
+        
+        # Matrix-State updaten, damit KI-Korrektur sichtbar wird
+        st.session_state['item_states'][item['id']]['man_x'] = final_x
+        st.session_state['item_states'][item['id']]['man_y'] = final_y
             
     cx = sum(fixed_x)/len(fixed_x) if fixed_x else wall_w / 2
     cy = sum(fixed_y)/len(fixed_y) if fixed_y else wall_h / 2
             
-    # 2. DYNAMISCHE FENSTER VERTEILEN
     forced_items = [i for i in dynamic_items if st.session_state['item_states'][i['id']]['force']]
     normal_items = [i for i in dynamic_items if not st.session_state['item_states'][i['id']]['force']]
     
@@ -168,22 +155,26 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
     normal_items = sorted(normal_items, key=lambda i: i['_weight'], reverse=True)
     pack_list = forced_items + normal_items
     
-    step = 200 if wall_w > 15000 or wall_h > 15000 else 50
+    step = 200 if wall_w > 15000 or wall_h > 15000 else 100
     
     for item in pack_list: 
+        state = st.session_state['item_states'][item['id']]
+        eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
+        dyn_item = {**item, 'w': eff_w, 'h': eff_h, '_user_rotated': state.get('rotated'), 'is_pinned': False}
+        
         best_pos = None
         min_score = float('inf')
         
-        for y in range(0, wall_h - min(item['w'], item['h']) + 1, step):
-            for x in range(0, wall_w - min(item['w'], item['h']) + 1, step):
-                fits_orig = not check_overlap(x, y, item['w'], item['h'], placed_items) if x + item['w'] <= wall_w and y + item['h'] <= wall_h else False
-                fits_rot = not check_overlap(x, y, item['h'], item['w'], placed_items) if allow_auto_rotate and not item['_user_rotated'] and x + item['h'] <= wall_w and y + item['w'] <= wall_h else False
+        for y in range(0, wall_h - min(dyn_item['w'], dyn_item['h']) + 1, step):
+            for x in range(0, wall_w - min(dyn_item['w'], dyn_item['h']) + 1, step):
+                fits_orig = not check_overlap(x, y, dyn_item['w'], dyn_item['h'], placed_items) if x + dyn_item['w'] <= wall_w and y + dyn_item['h'] <= wall_h else False
+                fits_rot = not check_overlap(x, y, dyn_item['h'], dyn_item['w'], placed_items) if allow_auto_rotate and not dyn_item['_user_rotated'] and x + dyn_item['h'] <= wall_w and y + dyn_item['w'] <= wall_h else False
                         
                 if fits_orig or fits_rot:
-                    cx_orig, cy_orig = x + item['w']/2, y + item['h']/2
+                    cx_orig, cy_orig = x + dyn_item['w']/2, y + dyn_item['h']/2
                     dist_orig = (cx_orig - cx)**2 + (cy_orig - cy)**2 if fits_orig else float('inf')
                     
-                    cx_rot, cy_rot = x + item['h']/2, y + item['w']/2
+                    cx_rot, cy_rot = x + dyn_item['h']/2, y + dyn_item['w']/2
                     dist_rot = (cx_rot - cx)**2 + (cy_rot - cy)**2 if fits_rot else float('inf')
                     
                     if symmetry:
@@ -196,10 +187,10 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
                     
                     if dist_orig < min_score and dist_orig <= dist_rot:
                         min_score = dist_orig
-                        best_pos = {**item, 'x': x, 'y': y, 'pinned': False}
+                        best_pos = {**dyn_item, 'x': x, 'y': y}
                     elif dist_rot < min_score:
                         min_score = dist_rot
-                        best_pos = {**item, 'x': x, 'y': y, 'w': item['h'], 'h': item['w'], 'pinned': False} 
+                        best_pos = {**dyn_item, 'x': x, 'y': y, 'w': dyn_item['h'], 'h': dyn_item['w']} 
         if best_pos:
             placed_items.append(best_pos)
             
@@ -213,61 +204,47 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
             
     return placed_items
 
-# EXAKTER LÜCKEN-ALGORITHMUS (100% ABDECKUNG)
-def calculate_exact_gaps(wall_w, wall_h, placed, alternate_split=False):
-    xs = set([0, wall_w])
-    ys = set([0, wall_h])
+# EXAKTER ZUSCHNITT-ALGORITHMUS (100% lückenlos)
+def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
+    x_coords = {0, wall_w}
+    y_coords = {0, wall_h}
     for p in placed:
-        xs.add(max(0, min(wall_w, p['x'])))
-        xs.add(max(0, min(wall_w, p['x'] + p['w'])))
-        ys.add(max(0, min(wall_h, p['y'])))
-        ys.add(max(0, min(wall_h, p['y'] + p['h'])))
-    
-    xs = sorted(list(xs))
-    ys = sorted(list(ys))
+        x_coords.add(p['x']); x_coords.add(p['x'] + p['w'])
+        y_coords.add(p['y']); y_coords.add(p['y'] + p['h'])
 
+    xs = sorted(list(x_coords))
+    ys = sorted(list(y_coords))
     grid = np.zeros((len(ys)-1, len(xs)-1), dtype=bool)
 
     for p in placed:
-        x1, x2 = p['x'], p['x'] + p['w']
-        y1, y2 = p['y'], p['y'] + p['h']
-        for ix in range(len(xs)-1):
-            for iy in range(len(ys)-1):
-                cx, cy = (xs[ix] + xs[ix+1])/2.0, (ys[iy] + ys[iy+1])/2.0
-                if x1 <= cx <= x2 and y1 <= cy <= y2:
-                    grid[iy, ix] = True
+        xi1, xi2 = xs.index(p['x']), xs.index(p['x'] + p['w'])
+        yi1, yi2 = ys.index(p['y']), ys.index(p['y'] + p['h'])
+        grid[yi1:yi2, xi1:xi2] = True
 
     gaps = []
-    
-    # Toggle ändert die Laufrichtung -> erzeugt ein anderes Platten-Schnittmuster!
-    y_range = range(len(ys)-1) if not alternate_split else reversed(range(len(ys)-1))
-    
-    for iy in y_range:
-        for ix in range(len(xs)-1):
-            if not grid[iy, ix]:
-                cw = 0
-                while ix + cw < len(xs)-1 and not grid[iy, ix + cw]: cw += 1
-                ch = 0
-                valid = True
-                while (iy + ch < len(ys)-1 if not alternate_split else iy - ch >= 0) and valid:
-                    row_idx = iy + ch if not alternate_split else iy - ch
-                    for k in range(ix, ix + cw):
-                        if grid[row_idx, k]:
-                            valid = False; break
-                    if valid: ch += 1
-
-                for r in range(ch):
-                    row_idx = iy + r if not alternate_split else iy - r
-                    for c in range(cw):
-                        grid[row_idx, ix + c] = True
-
-                act_y = ys[iy] if not alternate_split else ys[iy - ch + 1]
-                
-                gaps.append({
-                    'id': uuid.uuid4().hex, 'x': xs[ix], 'y': act_y, 
-                    'w': xs[ix+cw] - xs[ix], 'h': ys[iy+ch] if not alternate_split else ys[iy+1] - act_y, 
-                    'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0, 'source': 'Plattenmaterial', 'condition': 'Neu', 'link': ''
-                })
+    for r in range(len(ys)-1):
+        for c in range(len(xs)-1):
+            if not grid[r, c]:
+                if toggle_dir:
+                    ch, valid = 0, True
+                    while r + ch < len(ys)-1 and not grid[r + ch, c]: ch += 1
+                    cw = 0
+                    while c + cw < len(xs)-1 and valid:
+                        for ir in range(r, r + ch):
+                            if grid[ir, c + cw]: valid = False; break
+                        if valid: cw += 1
+                    grid[r:r+ch, c:c+cw] = True
+                    gaps.append({'id': uuid.uuid4().hex, 'x': xs[c], 'y': ys[r], 'w': xs[c+cw]-xs[c], 'h': ys[r+ch]-ys[r], 'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0, 'source': '-', 'condition': 'Neu', 'link': ''})
+                else:
+                    cw, valid = 0, True
+                    while c + cw < len(xs)-1 and not grid[r, c + cw]: cw += 1
+                    ch = 0
+                    while r + ch < len(ys)-1 and valid:
+                        for ic in range(c, c + cw):
+                            if grid[r + ch, ic]: valid = False; break
+                        if valid: ch += 1
+                    grid[r:r+ch, c:c+cw] = True
+                    gaps.append({'id': uuid.uuid4().hex, 'x': xs[c], 'y': ys[r], 'w': xs[c+cw]-xs[c], 'h': ys[r+ch]-ys[r], 'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0, 'source': '-', 'condition': 'Neu', 'link': ''})
     return gaps
 
 # --- UI: SIDEBAR ---
@@ -287,10 +264,11 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    
-    # NEU: KALKULATION IN DER SIDEBAR!
-    stats_sidebar = st.empty()
-    st.divider()
+    if st.session_state['is_loaded']:
+        # STATS IN DER SIDEBAR!
+        st.header("📊 Kalkulation")
+        stats_container = st.empty()
+        st.divider()
 
     st.header(T["custom_header"])
     colA, colB = st.columns(2)
@@ -303,7 +281,7 @@ with st.sidebar:
         st.session_state['custom_windows'].append({
             'id': item_id, 'pos_label': pos_label, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': ''
         })
-        st.session_state['item_states'][item_id] = {'visible': True, 'fixed': False, 'force': True, 'rotated': False, 'man_x': None, 'man_y': None}
+        st.session_state['item_states'][item_id] = {'visible': True, 'pinned': False, 'force': True, 'rotated': False, 'man_x': None, 'man_y': None}
         st.rerun()
         
 # --- UI: HAUPTBEREICH ---
@@ -316,15 +294,15 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         st.subheader(T["wall_header"])
         
         c_sli1, c_num1 = st.columns([2, 1])
-        c_sli1.slider("Breite", 1000, 30000, value=st.session_state.w_val, step=100, key="w_sli", on_change=sync_w_sli, label_visibility="collapsed")
-        c_num1.number_input("B", 1000, 30000, value=st.session_state.w_val, step=100, key="w_num", on_change=sync_w_num, label_visibility="collapsed")
+        c_sli1.slider("Breite", 1000, 30000, value=st.session_state.wall_w, step=100, key="w_sli", on_change=sync_w_sli, label_visibility="collapsed")
+        c_num1.number_input("B", 1000, 30000, value=st.session_state.wall_w, step=100, key="w_num", on_change=sync_w_num, label_visibility="collapsed")
         
         c_sli2, c_num2 = st.columns([2, 1])
-        c_sli2.slider("Höhe", 1000, 30000, value=st.session_state.h_val, step=100, key="h_sli", on_change=sync_h_sli, label_visibility="collapsed")
-        c_num2.number_input("H", 1000, 30000, value=st.session_state.h_val, step=100, key="h_num", on_change=sync_h_num, label_visibility="collapsed")
+        c_sli2.slider("Höhe", 1000, 30000, value=st.session_state.wall_h, step=100, key="h_sli", on_change=sync_h_sli, label_visibility="collapsed")
+        c_num2.number_input("H", 1000, 30000, value=st.session_state.wall_h, step=100, key="h_num", on_change=sync_h_num, label_visibility="collapsed")
         
-        wall_width = st.session_state.w_val
-        wall_height = st.session_state.h_val
+        wall_width = st.session_state.wall_w
+        wall_height = st.session_state.wall_h
         
         st.divider()
         st.markdown("**Design-Parameter**")
@@ -334,33 +312,34 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         
         st.button(T["shuffle_btn"], on_click=shuffle_layout, type="primary")
         st.divider()
-        st.button(T["opt_gaps_btn"], on_click=optimize_gaps, help="Ändert das Schnittmuster der Holz/Metall-Platten (ohne die Fenster zu bewegen).")
+        st.button(T["opt_gaps_btn"], on_click=optimize_gaps, help="Dreht die Richtung der Fugen für den Zuschnitt.")
 
     with col2:
         placed = pack_smart_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate, symmetry=symmetry, randomness=chaos_val, seed=st.session_state['layout_seed'])
         
-        # 100% Exakte Gaps berechnen!
-        gaps = calculate_exact_gaps(wall_width, wall_height, placed, alternate_split=st.session_state['gap_toggle'])
+        # EXAKTER ZUSCHNITT OHNE LEEREN FLÄCHEN!
+        gaps = calculate_gaps_exact(wall_width, wall_height, placed, toggle_dir=st.session_state['gap_toggle'])
         
-        # UPDATE SIDEBAR STATS
         total_price = sum(p['price'] for p in placed)
         wall_area_m2 = (wall_width * wall_height) / 1000000
         win_area_m2 = sum((p['w'] * p['h'])/1000000 for p in placed)
         win_pct = (win_area_m2 / wall_area_m2 * 100) if wall_area_m2 > 0 else 0
-        stats_sidebar.markdown(f"### 💶 {T['price_total']}:\n# **{total_price:.2f} €**")
-        stats_sidebar.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²\n\n**{T['win_area']}:** {win_area_m2:.2f} m²\n\n*(**{T['fill_rate']}:** {win_pct:.1f}%)*")
         
-        # DRAG & DROP HTML Rendering
+        # PREIS IN DIE SIDEBAR RENDERN
+        stats_container.markdown(f"### 💶 {T['price_total']}:\n# **{total_price:.2f} €**")
+        stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²<br>**{T['win_area']}:** {win_area_m2:.2f} m²<br>*(**{T['fill_rate']}:** {win_pct:.1f}%)*", unsafe_allow_html=True)
+        
+        # DRAG & DROP HTML
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
         
         js_placed = []
         for p in placed:
-            # P-Label + Pin Icon im Canvas
-            mark = "📌\n" if p.get('pinned') else ""
+            # Wenn das Fenster in der Matrix gepinnt ist, zeige den Pin im Bild!
+            pin_icon = "📌 " if p.get('is_pinned') else ""
             js_placed.append({
-                "id": p['id'], "label": f"{mark}{p['pos_label']}\n{p['w']}x{p['h']}", "color": p['color'],
+                "id": p['id'], "label": f"{pin_icon}{p['pos_label']}\n{p['w']}x{p['h']}", "color": p['color'],
                 "x": int(p['x'] * scale), "y": int(canvas_h - (p['y'] * scale) - (p['h'] * scale)),
                 "w": int(p['w'] * scale), "h": int(p['h'] * scale)
             })
@@ -368,7 +347,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         js_gaps = []
         for g in gaps:
             js_gaps.append({
-                "label": f"{(g['w']*g['h']/1000000):.2f}m²" if g['w'] >= 400 and g['h'] >= 400 else "",
+                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 400 and g['h'] >= 400 else "",
                 "x": int(g['x'] * scale), "y": int(canvas_h - (g['y'] * scale) - (g['h'] * scale)),
                 "w": int(g['w'] * scale), "h": int(g['h'] * scale)
             })
@@ -379,7 +358,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             #wall {{ width: {canvas_w}px; height: {canvas_h}px; background: repeating-linear-gradient(45deg, #ffcccc, #ffcccc 10px, #ffffff 10px, #ffffff 20px); border: 4px solid #cc0000; position: relative; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
             .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; white-space: pre-wrap; line-height: 1.2; z-index: 10; }}
             .window:active {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
-            .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; }}
+            .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }}
         </style></head><body>
             <div id="wall"></div>
             <script>
@@ -443,7 +422,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 status = "✅ 🔄" 
             else:
                 status = "✅"
-            if state.get('fixed'): status = "📌"
+            if state.get('pinned'): status = "📌"
         else:
             status = "❌"
             disp_w, disp_h = (item['h'], item['w']) if state['rotated'] else (item['w'], item['h'])
@@ -453,20 +432,18 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         df_win_data.append({
             "id": item['id'],
             "_color": item['color'], 
-            T["col_layer"]: state['visible'],
-            T["col_fix"]: state.get('fixed', False),
+            T["col_layer"]: state['visible'], 
+            T["col_pin"]: state.get('pinned', False), # DIE NEUE PIN SPALTE
+            "📍 Man X": state.get('man_x'), 
+            "📍 Man Y": state.get('man_y'), 
             T["col_rotate"]: state.get('rotated', False), 
-            "📍 Manuell X": state.get('man_x'), 
-            "📍 Manuell Y": state.get('man_y'), 
             T["col_force"]: state['force'],
-            T["col_type"]: item['type'],
             "Pos": item['pos_label'],
             T["col_status"]: status,
             T["col_dim"]: f"{disp_w} x {disp_h}",
             T["col_area"]: f"{area_m2:.2f}",
-            T["col_source"]: item['source'],
-            T["col_price"]: f"{item['price']:.2f} €", 
-            T["col_link"]: item['link']
+            T["col_type"]: item['type'],
+            T["col_price"]: f"{item['price']:.2f} €"
         })
         
     df_win = pd.DataFrame(df_win_data)
@@ -485,14 +462,13 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         column_config={
             "_color": None, 
             T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
-            T["col_fix"]: st.column_config.CheckboxColumn(T["col_fix"], help="Pinnt das Fenster fest"),
+            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Setzt das Fenster auf 0,0 und verankert es."),
+            "📍 Man X": st.column_config.NumberColumn("📍 Man X", help="Wird von der KI korrigiert, falls fehlerhaft!"),
+            "📍 Man Y": st.column_config.NumberColumn("📍 Man Y"),
             T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
-            "📍 Manuell X": st.column_config.NumberColumn("📍 Manuell X"),
-            "📍 Manuell Y": st.column_config.NumberColumn("📍 Manuell Y"),
-            T["col_force"]: st.column_config.CheckboxColumn(T["col_force"]),
-            T["col_link"]: st.column_config.LinkColumn(T["col_link"], display_text="Link 🔗")
+            T["col_force"]: st.column_config.CheckboxColumn(T["col_force"])
         },
-        disabled=[T["col_type"], "Pos", T["col_status"], T["col_dim"], T["col_area"], T["col_source"], T["col_price"], T["col_link"]], 
+        disabled=[T["col_type"], "Pos", T["col_status"], T["col_dim"], T["col_area"], T["col_price"]], 
         use_container_width=True, key="windows_editor"
     )
     
@@ -502,38 +478,42 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             state = st.session_state['item_states'][item_id]
             
             new_vis = bool(row[T['col_layer']])
-            new_fix = bool(row[T['col_fix']])
             new_rot = bool(row[T['col_rotate']])
             new_fce = bool(row[T['col_force']])
-            new_mx = row['📍 Manuell X']
-            new_my = row['📍 Manuell Y']
-            
-            # PIN LOGIK
-            if new_fix and not state.get('fixed') and pd.isna(new_mx):
-                new_mx, new_my = 0, 0
-            if (not pd.isna(new_mx) or not pd.isna(new_my)) and not new_fix:
-                new_fix = True
-            if not new_fix and state.get('fixed'):
-                new_mx, new_my = None, None
+            new_pin = bool(row[T['col_pin']])
+            new_mx = None if pd.isna(row['📍 Man X']) else int(row['📍 Man X'])
+            new_my = None if pd.isna(row['📍 Man Y']) else int(row['📍 Man Y'])
 
-            new_mx = None if pd.isna(new_mx) else int(new_mx)
-            new_my = None if pd.isna(new_my) else int(new_my)
-
-            if (new_vis != state['visible'] or new_fix != state.get('fixed') or new_rot != state.get('rotated', False) or 
-                new_fce != state['force'] or new_mx != state['man_x'] or new_my != state['man_y']):
-                
-                state['visible'] = new_vis
-                state['fixed'] = new_fix
-                state['rotated'] = new_rot
-                state['force'] = new_fce
+            # Logik für den Pin: Hat der User gerade auf Pin geklickt?
+            if new_pin != state.get('pinned', False):
+                state['pinned'] = new_pin
+                if new_pin:
+                    state['man_x'] = 0
+                    state['man_y'] = 0
+                else:
+                    state['man_x'] = None
+                    state['man_y'] = None
+                changes_made = True
+            # Hat der User X/Y manuell getippt?
+            elif new_mx != state.get('man_x') or new_my != state.get('man_y'):
                 state['man_x'] = new_mx
                 state['man_y'] = new_my
+                if new_mx is not None or new_my is not None:
+                    state['pinned'] = True # Auto-Pin beim Tippen
+                else:
+                    state['pinned'] = False
+                changes_made = True
+            # Layer / Rotate / Force
+            elif new_vis != state['visible'] or new_rot != state.get('rotated', False) or new_fce != state['force']:
+                state['visible'] = new_vis
+                state['rotated'] = new_rot
+                state['force'] = new_fce
                 changes_made = True
                 
     if changes_made: st.rerun()
 
     # ==========================================
-    # --- EXPORT & LÜCKEN (GAPS) ---
+    # --- EXPORT & LÜCKEN (GAPS) MATRIX ---
     # ==========================================
     st.divider()
     
@@ -545,19 +525,19 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         df_gaps_data.append({
             T["col_type"]: T["fill"], "Pos": "Gap", T["col_status"]: "⚠️",
             T["col_dim"]: f"{g['w']} x {g['h']}", T["col_area"]: f"{area_m2:.2f}",
-            T["col_source"]: g['source'], T["col_price"]: "-", T["col_link"]: ""
+            "Herkunft": g['source'], T["col_price"]: "-"
         })
     df_gaps = pd.DataFrame(df_gaps_data)
     
     final_export_df = pd.concat([export_data, df_gaps], ignore_index=True)
-    final_export_df = final_export_df.drop(columns=['_color', T['col_layer'], T['col_fix'], T['col_rotate'], '📍 Manuell X', '📍 Manuell Y', T['col_force']], errors='ignore')
+    final_export_df = final_export_df.drop(columns=['_color', T['col_layer'], T['col_pin'], T['col_rotate'], '📍 Man X', '📍 Man Y', T['col_force']], errors='ignore')
 
     csv = final_export_df.to_csv(index=False).encode('utf-8')
     st.download_button(label=T["export_btn"], data=csv, file_name='stueckliste.csv', mime='text/csv', type="primary")
 
     st.subheader(T["gaps_header"])
     if not df_gaps.empty:
-        st.dataframe(df_gaps[[T["col_type"], T["col_dim"], T["col_area"], T["col_source"]]], hide_index=True, use_container_width=True)
+        st.dataframe(df_gaps[[T["col_type"], T["col_dim"], T["col_area"], "Herkunft"]], hide_index=True, use_container_width=True)
     else:
         st.success(T["no_gaps"])
 
