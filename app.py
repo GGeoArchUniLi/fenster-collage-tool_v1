@@ -430,4 +430,58 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
             "📍 Manuell X": st.column_config.NumberColumn("📍 Manuell X"),
             "📍 Manuell Y": st.column_config.NumberColumn("📍 Manuell Y"),
-            T["col_force"]: st.column_config.CheckboxColumn(T["
+            T["col_force"]: st.column_config.CheckboxColumn(T["col_force"]),
+            T["col_link"]: st.column_config.LinkColumn(T["col_link"], display_text="Link 🔗")
+        },
+        disabled=[T["col_type"], "Pos", T["col_status"], T["col_dim"], T["col_area"], T["col_source"], T["col_price"], T["col_link"]], 
+        use_container_width=True, key="windows_editor"
+    )
+    
+    changes_made = False
+    for item_id, row in edited_df.iterrows():
+        if item_id in st.session_state['item_states']:
+            state = st.session_state['item_states'][item_id]
+            
+            new_vis = bool(row[T['col_layer']])
+            new_rot = bool(row[T['col_rotate']])
+            new_fce = bool(row[T['col_force']])
+            new_mx = None if pd.isna(row['📍 Manuell X']) else int(row['📍 Manuell X'])
+            new_my = None if pd.isna(row['📍 Manuell Y']) else int(row['📍 Manuell Y'])
+
+            if (new_vis != state['visible'] or new_rot != state.get('rotated', False) or 
+                new_fce != state['force'] or new_mx != state['man_x'] or new_my != state['man_y']):
+                
+                state['visible'] = new_vis
+                state['rotated'] = new_rot
+                state['force'] = new_fce
+                state['man_x'] = new_mx
+                state['man_y'] = new_my
+                changes_made = True
+                
+    if changes_made: st.rerun()
+
+    # ==========================================
+    # --- EXPORT & LÜCKEN (GAPS) ---
+    # ==========================================
+    st.divider()
+    
+    export_data = df_win[(df_win[T['col_status']].str.contains('✅')) | (df_win[T['col_status']].str.contains('📌'))].copy()
+    
+    df_gaps_data = []
+    for g in gaps:
+        area_m2 = (g['w'] * g['h']) / 1000000
+        df_gaps_data.append({
+            T["col_type"]: T["fill"], "Pos": "Gap", T["col_status"]: "⚠️",
+            T["col_dim"]: f"{g['w']} x {g['h']}", T["col_area"]: f"{area_m2:.2f}",
+            T["col_source"]: g['source'], T["col_price"]: "-", T["col_link"]: ""
+        })
+    df_gaps = pd.DataFrame(df_gaps_data)
+    
+    final_export_df = pd.concat([export_data, df_gaps], ignore_index=True)
+    final_export_df = final_export_df.drop(columns=['_color', T['col_layer'], T['col_rotate'], '📍 Manuell X', '📍 Manuell Y', T['col_force']], errors='ignore')
+
+    csv = final_export_df.to_csv(index=False).encode('utf-8')
+    st.download_button(label=T["export_btn"], data=csv, file_name='stueckliste.csv', mime='text/csv', type="primary")
+
+else:
+    st.info("👈 Bitte starte die Suche in der Seitenleiste.")
