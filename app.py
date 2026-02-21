@@ -8,12 +8,12 @@ import uuid
 import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v2.6", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v2.7", layout="wide")
 
-# --- SPRACH-WÖRTERBUCH (Komplett) ---
+# --- SPRACH-WÖRTERBUCH (Komplett inkl. Spanisch) ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v2.6",
+        "title": "🧱 Patchwork-Fassaden-Generator v2.7",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
@@ -26,9 +26,26 @@ LANG_DICT = {
         "fill": "Zuschnitt Panel",
         "col_layer": "👁️ Sichtbar", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", 
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
+    },
+    "🇪🇸 ES": {
+        "title": "🧱 Generador de Fachadas v2.7",
+        "search_header": "1. Búsqueda Global", "country": "País", "zip": "C.P. / Ciudad", "radius": "Radio (km)",
+        "reuse": "🔄 Ventanas Usadas", "new": "🆕 Ventanas Nuevas", "search_btn": "🔍 Buscar en mercados",
+        "custom_header": "2. Inventario Propio", "width": "Ancho (mm)", "height": "Alto (mm)", "add_btn": "➕ Añadir",
+        "wall_header": "Apertura (hasta 30m)", "shuffle_btn": "🎲 Reagrupar (IA)", 
+        "auto_rotate": "🔄 Permitir auto-rotación", "lock_pinned": "🔒 Mantener posiciones fijadas",
+        "symmetry": "📐 Clúster Simétrico", "chaos": "Varianza / Caos (%)", "opt_gaps_btn": "✂️ Alternar cortes (H/V)",
+        "price_total": "Precio Total", "win_area": "Área de Ventanas", "wall_area": "Área de Apertura", "fill_rate": "Tasa de relleno",
+        "matrix_header": "📋 Matriz de Control", "export_btn": "📥 Descargar lista (CSV)",
+        "gaps_header": "🟥 Paneles de Relleno Requeridos", "no_gaps": "¡El muro está perfectamente lleno!",
+        "fill": "Panel de corte",
+        "col_layer": "👁️ Visible", "col_pin": "📌 Fijar", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tipo", "col_status": "Estado", 
+        "col_dim": "Dimensiones", "col_area": "Área (m²)", "col_source": "Origen", "col_price": "Precio", "col_link": "🛒 Tienda"
     }
 }
-T = LANG_DICT["🇩🇪 DE"]
+# Fallback für die anderen Sprachen, hier der Übersichtlichkeit halber abgekürzt, wir laden das DE/ES dict.
+lang_choice = st.radio("Sprache / Idioma:", ["🇩🇪 DE", "🇪🇸 ES"], horizontal=True)
+T = LANG_DICT[lang_choice]
 st.title(T["title"])
 
 # --- SESSION STATES INITIALISIERUNG ---
@@ -40,14 +57,17 @@ if 'pos_counter' not in st.session_state: st.session_state['pos_counter'] = 1
 if 'layout_seed' not in st.session_state: st.session_state['layout_seed'] = 42 
 if 'gap_toggle' not in st.session_state: st.session_state['gap_toggle'] = False
 
-if 'wall_w' not in st.session_state: st.session_state.wall_w = 4000
-if 'wall_h' not in st.session_state: st.session_state.wall_h = 3000
+# --- SLIDER SYNCHRONISATION ---
+if 'w_sli' not in st.session_state: st.session_state.w_sli = 4000
+if 'w_num' not in st.session_state: st.session_state.w_num = 4000
+if 'h_sli' not in st.session_state: st.session_state.h_sli = 3000
+if 'h_num' not in st.session_state: st.session_state.h_num = 3000
 
-# Bidirektionale Sync-Funktionen
-def sync_w_sli(): st.session_state.wall_w = st.session_state.w_sli
-def sync_w_num(): st.session_state.wall_w = st.session_state.w_num
-def sync_h_sli(): st.session_state.wall_h = st.session_state.h_sli
-def sync_h_num(): st.session_state.wall_h = st.session_state.h_num
+def sync_w_from_sli(): st.session_state.w_num = st.session_state.w_sli
+def sync_w_from_num(): st.session_state.w_sli = st.session_state.w_num
+def sync_h_from_sli(): st.session_state.h_num = st.session_state.h_sli
+def sync_h_from_num(): st.session_state.h_sli = st.session_state.h_num
+
 def shuffle_layout(): st.session_state['layout_seed'] = random.randint(1, 10000)
 def optimize_gaps(): st.session_state['gap_toggle'] = not st.session_state['gap_toggle']
 
@@ -73,7 +93,6 @@ def harvest_materials(land, plz, radius, use_reuse, use_new):
                             item_id = uuid.uuid4().hex
                             pos_label = f"P{st.session_state['pos_counter']}"
                             st.session_state['pos_counter'] += 1
-                            
                             materials.append({
                                 'id': item_id, 'pos_label': pos_label, 'w': w, 'h': h, 'type': 'Fenster', 'color': color, 
                                 'price': price, 'source': res['title'][:30] + '...', 'condition': condition, 'link': res['href']
@@ -94,7 +113,7 @@ def harvest_materials(land, plz, radius, use_reuse, use_new):
             st.session_state['item_states'][item_id] = {'visible': True, 'pinned': False, 'force': False, 'rotated': False, 'man_x': None, 'man_y': None}
     return materials
 
-# --- ALGORITHMEN (KI Core) ---
+# --- ALGORITHMEN ---
 def check_overlap(x, y, w, h, placed):
     for p in placed:
         if not (x + w <= p['x'] or x >= p['x'] + p['w'] or y + h <= p['y'] or y >= p['y'] + p['h']): return True
@@ -106,20 +125,17 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
     
     pinned_items = [i for i in items if st.session_state['item_states'][i['id']].get('pinned')]
     dynamic_items = [i for i in items if not st.session_state['item_states'][i['id']].get('pinned')]
-    
     fixed_x, fixed_y = [], []
     
-    # 1. Gepinnte Elemente setzen (mit KI-Korrektur bei Überlappung/Out-of-Bounds)
+    # 1. Gepinnte Elemente setzen (mit Bounds & KI Overlap Check)
     for item in pinned_items:
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
         dyn_item = {**item, 'w': eff_w, 'h': eff_h, '_user_rotated': state.get('rotated'), 'is_pinned': True}
         
-        # Bounds Correction
         target_x = max(0, min(state.get('man_x') or 0, wall_w - eff_w))
         target_y = max(0, min(state.get('man_y') or 0, wall_h - eff_h))
         
-        # Overlap Correction (Docking search)
         if not check_overlap(target_x, target_y, eff_w, eff_h, placed_items):
             final_x, final_y = target_x, target_y
         else:
@@ -183,7 +199,6 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
                     if symmetry:
                         if fits_orig: dist_orig += min(abs(cx_orig - cx), abs(cy_orig - cy)) * 5000
                         if fits_rot: dist_rot += min(abs(cx_rot - cx), abs(cy_rot - cy)) * 5000
-                            
                     if randomness > 0:
                         dist_orig *= random.uniform(1.0, 1.0 + (randomness/50))
                         dist_rot *= random.uniform(1.0, 1.0 + (randomness/50))
@@ -207,7 +222,7 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
             
     return placed_items
 
-# ALGORITHMUS: Exakter Sweep-Line Zuschnitt (Keine Überlappung)
+# ALGORITHMUS: Exakter Sweep-Line Zuschnitt (Ohne Lücken, ohne Überlappung)
 def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
     x_coords = {0, wall_w}
     y_coords = {0, wall_h}
@@ -215,8 +230,7 @@ def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
         x_coords.add(p['x']); x_coords.add(p['x'] + p['w'])
         y_coords.add(p['y']); y_coords.add(p['y'] + p['h'])
 
-    xs = sorted(list(x_coords))
-    ys = sorted(list(y_coords))
+    xs = sorted(list(x_coords)); ys = sorted(list(y_coords))
     grid = np.zeros((len(ys)-1, len(xs)-1), dtype=bool)
 
     for p in placed:
@@ -253,7 +267,7 @@ def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
 # --- UI: SIDEBAR ---
 with st.sidebar:
     st.header(T["search_header"])
-    land = st.selectbox(T["country"], ["Deutschland", "Österreich", "Schweiz", "Liechtenstein"])
+    land = st.selectbox(T["country"], ["Deutschland", "Österreich", "Schweiz", "España"])
     plz = st.text_input(T["zip"], "10115")
     radius = st.slider(T["radius"], 0, 100, 50, 10)
     
@@ -261,27 +275,28 @@ with st.sidebar:
     use_new = st.checkbox(T["new"], value=False)
     
     if st.button(T["search_btn"], type="primary"):
-        with st.spinner("Scanne Angebote..."):
+        with st.spinner("..."):
             st.session_state['inventory'] = harvest_materials(land, plz, radius, use_reuse, use_new)
             st.session_state['is_loaded'] = True
         st.rerun()
 
     st.divider()
     if st.session_state['is_loaded']:
-        st.header("📊 Kalkulation (Sidebar)")
+        # KOMPAKTE STATS IN DER SIDEBAR (Preis ist da!)
+        st.header("📊 Info")
         stats_container = st.empty()
         st.divider()
 
     st.header(T["custom_header"])
     colA, colB = st.columns(2)
-    with colA: cw_w = st.number_input(T["width"], 300, 30000, 1000, step=100)
-    with colB: cw_h = st.number_input(T["height"], 300, 30000, 1200, step=100)
+    with colA: cw_w = st.number_input(T["width"], 300, 30000, 1000, step=100, key="cw_w_in")
+    with colB: cw_h = st.number_input(T["height"], 300, 30000, 1200, step=100, key="cw_h_in")
     if st.button(T["add_btn"]):
         item_id = uuid.uuid4().hex
         pos_label = f"P{st.session_state['pos_counter']}"
         st.session_state['pos_counter'] += 1
         st.session_state['custom_windows'].append({
-            'id': item_id, 'pos_label': pos_label, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': ''
+            'id': item_id, 'pos_label': pos_label, 'w': int(st.session_state.cw_w_in), 'h': int(st.session_state.cw_h_in), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Lager', 'condition': 'Eigen', 'link': ''
         })
         st.session_state['item_states'][item_id] = {'visible': True, 'pinned': False, 'force': True, 'rotated': False, 'man_x': None, 'man_y': None}
         st.rerun()
@@ -296,15 +311,15 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         st.subheader(T["wall_header"])
         
         c_sli1, c_num1 = st.columns([2, 1])
-        c_sli1.slider("Breite", 1000, 30000, value=st.session_state.wall_w, step=100, key="w_sli", on_change=sync_w_sli, label_visibility="collapsed")
-        c_num1.number_input("B", 1000, 30000, value=st.session_state.wall_w, step=100, key="w_num", on_change=sync_w_num, label_visibility="collapsed")
+        c_sli1.slider("B", 1000, 30000, key="w_sli", on_change=sync_w_from_sli, label_visibility="collapsed")
+        c_num1.number_input("B", 1000, 30000, key="w_num", on_change=sync_w_from_num, label_visibility="collapsed")
         
         c_sli2, c_num2 = st.columns([2, 1])
-        c_sli2.slider("Höhe", 1000, 30000, value=st.session_state.wall_h, step=100, key="h_sli", on_change=sync_h_sli, label_visibility="collapsed")
-        c_num2.number_input("H", 1000, 30000, value=st.session_state.wall_h, step=100, key="h_num", on_change=sync_h_num, label_visibility="collapsed")
+        c_sli2.slider("H", 1000, 30000, key="h_sli", on_change=sync_h_from_sli, label_visibility="collapsed")
+        c_num2.number_input("H", 1000, 30000, key="h_num", on_change=sync_h_from_num, label_visibility="collapsed")
         
-        wall_width = st.session_state.wall_w
-        wall_height = st.session_state.wall_h
+        wall_width = st.session_state.w_num
+        wall_height = st.session_state.h_num
         
         st.divider()
         st.markdown("**Design-Parameter**")
@@ -313,21 +328,20 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         symmetry = st.checkbox(T["symmetry"], value=False)
         chaos_val = st.slider(T["chaos"], 0, 100, 10, 5)
         
-        st.button(T["shuffle_btn"], on_click=shuffle_layout, type="primary")
+        st.button(T["shuffle_btn"], on_click=shuffle_layout, type="primary", use_container_width=True)
         st.divider()
-        st.button(T["opt_gaps_btn"], on_click=optimize_gaps, help="Richtet die Holz/Metall-Paneele horizontal oder vertikal aus.")
+        st.button(T["opt_gaps_btn"], on_click=optimize_gaps, use_container_width=True)
 
     with col2:
         placed = pack_smart_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate, symmetry=symmetry, randomness=chaos_val, seed=st.session_state['layout_seed'], lock_pinned=lock_pinned)
         gaps = calculate_gaps_exact(wall_width, wall_height, placed, toggle_dir=st.session_state['gap_toggle'])
         
-        # --- BERECHNUNG DER WERTE ---
+        # --- GROSSES DASHBOARD (GESAMTPREIS & FLÄCHEN) ---
         total_price = sum(p['price'] for p in placed)
         wall_area_m2 = (wall_width * wall_height) / 1000000
         win_area_m2 = sum((p['w'] * p['h'])/1000000 for p in placed)
         win_pct = (win_area_m2 / wall_area_m2 * 100) if wall_area_m2 > 0 else 0
         
-        # --- KORREKTUR: DASHBOARD UNTER/ÜBER DER MATRIX ---
         st.markdown("### 📊 Live-Kalkulation")
         m_col1, m_col2, m_col3, m_col4 = st.columns(4)
         m_col1.metric(T["wall_area"], f"{wall_area_m2:.2f} m²")
@@ -335,20 +349,19 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         m_col3.metric(T["fill_rate"], f"{win_pct:.1f} %")
         m_col4.metric(T["price_total"], f"{total_price:.2f} €")
         
-        # Sidebar Stats (Kompakt)
+        # Sidebar Stats parallel updaten
         stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²\n\n**{T['win_area']}:** {win_area_m2:.2f} m²\n\n**{T['fill_rate']}:** {win_pct:.1f}%\n\n### 💶 {T['price_total']}:\n## **{total_price:.2f} €**")
         
-        # DRAG & DROP HTML Rendering mit Scale Figure
+        # --- DRAG & DROP HTML Rendering mit Scale Figure & Window Icons ---
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
-        figure_h_px = int(1780 * scale) # 1.78m Figur
+        figure_h_px = int(1780 * scale) # 1.78m Architektur-Figur
 
         js_placed = []
         for p in placed:
-            pin_icon = "📌\n" if p.get('is_pinned') else ""
             js_placed.append({
-                "id": p['id'], "label": f"{pin_icon}{p['pos_label']}\n{p['w']}x{p['h']}", "color": p['color'],
+                "id": p['id'], "label": f"{p['pos_label']}\n{p['w']}x{p['h']}", "color": p['color'],
                 "x": int(p['x'] * scale), "y": int(canvas_h - (p['y'] * scale) - (p['h'] * scale)),
                 "w": int(p['w'] * scale), "h": int(p['h'] * scale),
                 "is_pinned": p.get('is_pinned', False)
@@ -362,19 +375,25 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 "w": int(g['w'] * scale), "h": int(g['h'] * scale)
             })
 
+        # SVG einer klassischen architektonischen Menschen-Silhouette
+        arch_silhouette_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 250'><circle cx='50' cy='20' r='14' fill='%23333'/><path d='M30 45 Q50 35 70 45 L80 110 L65 110 L60 70 L55 120 L60 240 L40 240 L45 140 L40 140 L45 240 L25 240 L35 120 L25 70 L20 110 L5 110 Z' fill='%23333'/></svg>"
+
         html_code = f"""
         <!DOCTYPE html><html><head><style>
             body {{ margin: 0; padding: 0; background-color: #f0f2f6; font-family: sans-serif; }}
-            .container {{ display: flex; align-items: flex-end; justify-content: center; gap: 20px; }}
-            .scale-figure {{ width: {max(30, int(500*scale))}px; height: {figure_h_px}px; background-color: #333; -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C13.1 2 14 2.9 14 4s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/></svg>') no-repeat center/contain; mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C13.1 2 14 2.9 14 4s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/></svg>') no-repeat center/contain; opacity: 0.7; }}
+            .container {{ display: flex; align-items: flex-end; justify-content: center; gap: 15px; padding-top: 20px; }}
+            .scale-figure {{ width: {max(25, int(400*scale))}px; height: {figure_h_px}px; background: url("{arch_silhouette_svg}") no-repeat bottom center/contain; opacity: 0.8; }}
             #wall {{ width: {canvas_w}px; height: {canvas_h}px; background: repeating-linear-gradient(45deg, #ffcccc, #ffcccc 10px, #ffffff 10px, #ffffff 20px); border: 4px solid #cc0000; position: relative; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
-            .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; white-space: pre-wrap; line-height: 1.2; z-index: 10; }}
-            .window.pinned {{ cursor: not-allowed; opacity: 0.9; box-shadow: none; border: 4px solid #222; }}
+            .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; z-index: 10; flex-direction: column; }}
+            .window.pinned {{ cursor: not-allowed; opacity: 0.95; border: 4px solid #222; }}
             .window:active:not(.pinned) {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
+            .win-icons {{ position: absolute; top: 2px; right: 2px; display: flex; gap: 3px; }}
+            .win-btn {{ background: rgba(255,255,255,0.8); border: 1px solid #555; border-radius: 3px; font-size: 10px; cursor: pointer; padding: 1px 4px; pointer-events: auto; }}
+            .win-btn:hover {{ background: white; }}
             .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }}
         </style></head><body>
             <div class="container">
-                <div class="scale-figure" title="Maßstabsfigur (1,78m)"></div>
+                <div class="scale-figure" title="Scale Figure (1,78m)"></div>
                 <div id="wall"></div>
             </div>
             <script>
@@ -382,15 +401,62 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 const items = {json.dumps(js_placed)};
                 const gaps = {json.dumps(js_gaps)};
                 let draggedEl = null; let startX, startY, initialLeft, initialTop;
-                gaps.forEach(gap => {{ const el = document.createElement('div'); el.className = 'gap'; el.innerText = gap.label; el.style.width = gap.w + 'px'; el.style.height = gap.h + 'px'; el.style.left = gap.x + 'px'; el.style.top = gap.y + 'px'; wall.appendChild(el); }});
-                items.forEach(item => {{ const el = document.createElement('div'); el.className = 'window'; if (item.is_pinned) el.classList.add('pinned'); el.id = item.id; el.innerText = item.label; el.style.backgroundColor = item.color; el.style.width = item.w + 'px'; el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px'; el.addEventListener('mousedown', dragStart); wall.appendChild(el); }});
-                function dragStart(e) {{ if (e.target.classList.contains('pinned')) return; draggedEl = e.target; startX = e.clientX; startY = e.clientY; initialLeft = parseInt(draggedEl.style.left, 10); initialTop = parseInt(draggedEl.style.top, 10); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', dragEnd); }}
-                function drag(e) {{ if (!draggedEl) return; e.preventDefault(); draggedEl.style.left = (initialLeft + (e.clientX - startX)) + 'px'; draggedEl.style.top = (initialTop + (e.clientY - startY)) + 'px'; }}
+
+                gaps.forEach(gap => {{
+                    const el = document.createElement('div');
+                    el.className = 'gap'; el.innerText = gap.label;
+                    el.style.width = gap.w + 'px'; el.style.height = gap.h + 'px'; el.style.left = gap.x + 'px'; el.style.top = gap.y + 'px';
+                    wall.appendChild(el);
+                }});
+
+                items.forEach(item => {{
+                    const el = document.createElement('div');
+                    el.className = 'window'; 
+                    if (item.is_pinned) el.classList.add('pinned');
+                    el.id = item.id; 
+                    
+                    // ICONS & LABEL RENDER
+                    el.innerHTML = `
+                        <div class="win-icons">
+                            <div class="win-btn rot-btn" title="Lokal Rotieren">🔄</div>
+                            <div class="win-btn pin-btn" title="Lokal Anpinnen">📌</div>
+                        </div>
+                        <div style="margin-top:12px;">${item.label.replace(/\\n/g, '<br>')}</div>
+                    `;
+                    el.style.backgroundColor = item.color; el.style.width = item.w + 'px'; el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
+                    
+                    // Interaktive Klicks im Canvas
+                    el.querySelector('.rot-btn').addEventListener('click', (e) => {{
+                        e.stopPropagation();
+                        let w = el.style.width; el.style.width = el.style.height; el.style.height = w;
+                    }});
+                    el.querySelector('.pin-btn').addEventListener('click', (e) => {{
+                        e.stopPropagation();
+                        el.classList.toggle('pinned');
+                    }});
+                    
+                    el.addEventListener('mousedown', dragStart);
+                    wall.appendChild(el);
+                }});
+
+                function dragStart(e) {{
+                    if (e.target.classList.contains('win-btn')) return;
+                    let targetWindow = e.target.closest('.window');
+                    if (!targetWindow || targetWindow.classList.contains('pinned')) return;
+                    draggedEl = targetWindow; startX = e.clientX; startY = e.clientY;
+                    initialLeft = parseInt(draggedEl.style.left, 10); initialTop = parseInt(draggedEl.style.top, 10);
+                    document.addEventListener('mousemove', drag); document.addEventListener('mouseup', dragEnd);
+                }}
+                function drag(e) {{
+                    if (!draggedEl) return; e.preventDefault();
+                    draggedEl.style.left = (initialLeft + (e.clientX - startX)) + 'px';
+                    draggedEl.style.top = (initialTop + (e.clientY - startY)) + 'px';
+                }}
                 function dragEnd(e) {{ document.removeEventListener('mousemove', drag); document.removeEventListener('mouseup', dragEnd); draggedEl = null; }}
             </script>
         </body></html>
         """
-        st.caption("ℹ️ **Info:** Das Verschieben mit der Maus ist eine Vorschau. Um ein Fenster für die KI-Berechnung unbeweglich zu machen, nutze `📌 Pin` in der Tabelle unten.")
+        st.caption("ℹ️ **Info Icons:** Die Klicks auf 📌 und 🔄 *im Bild* ändern nur die Vorschau. Um ein Fenster für die KI-Berechnung dauerhaft zu speichern, setze den Haken in der Matrix unten!")
         components.html(html_code, height=canvas_h + 50)
 
     # ==========================================
@@ -399,6 +465,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     st.divider()
     st.subheader(T["matrix_header"])
     df_win_data = []
+    
     placed_dict = {p['id']: p for p in placed}
     total_inventory = sorted(total_inventory, key=lambda x: int(x['pos_label'][1:]))
     
@@ -416,6 +483,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         else:
             status = "❌"
             disp_w, disp_h = (item['h'], item['w']) if state['rotated'] else (item['w'], item['h'])
+            
         area_m2 = (disp_w * disp_h) / 1000000
         df_win_data.append({
             "id": item['id'], "_color": item['color'], T["col_layer"]: state['visible'], T["col_pin"]: state.get('pinned', False), 
@@ -437,8 +505,8 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         df_win.style.apply(highlight_windows, axis=1), 
         column_config={
             "_color": None, T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
-            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Verankert das Fenster. X/Y wird bei Bedarf von der KI korrigiert."),
-            "📍 Man X": st.column_config.NumberColumn("📍 Man X", help="Wird von der KI korrigiert!"),
+            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Sperrt die Position für den KI Algorithmus."),
+            "📍 Man X": st.column_config.NumberColumn("📍 Man X"),
             "📍 Man Y": st.column_config.NumberColumn("📍 Man Y"), T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
             T["col_force"]: st.column_config.CheckboxColumn(T["col_force"])
         },
@@ -452,10 +520,19 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             state = st.session_state['item_states'][item_id]
             new_vis = bool(row[T['col_layer']]); new_rot = bool(row[T['col_rotate']]); new_fce = bool(row[T['col_force']]); new_pin = bool(row[T['col_pin']])
             new_mx = None if pd.isna(row['📍 Man X']) else int(row['📍 Man X']); new_my = None if pd.isna(row['📍 Man Y']) else int(row['📍 Man Y'])
+            
+            # PIN LOGIK (Setzt die ECHTE Position aus dem Algorithmus ein, nicht 0,0!)
             if new_pin != state.get('pinned', False):
                 state['pinned'] = new_pin
-                if new_pin: state['man_x'] = 0; state['man_y'] = 0
-                else: state['man_x'] = None; state['man_y'] = None
+                if new_pin: 
+                    # Hole die aktuelle Position aus der Grafik
+                    curr_x = placed_dict[item_id]['x'] if item_id in placed_dict else 0
+                    curr_y = placed_dict[item_id]['y'] if item_id in placed_dict else 0
+                    state['man_x'] = curr_x
+                    state['man_y'] = curr_y
+                else: 
+                    state['man_x'] = None
+                    state['man_y'] = None
                 changes_made = True
             elif new_mx != state.get('man_x') or new_my != state.get('man_y'):
                 state['man_x'] = new_mx; state['man_y'] = new_my
