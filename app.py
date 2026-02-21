@@ -8,125 +8,41 @@ import uuid
 import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v1.5", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v2.0", layout="wide")
 
-# --- 100% LÜCKENLOSES SPRACH-WÖRTERBUCH ---
+# --- SPRACH-WÖRTERBUCH ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v1.5",
+        "title": "🧱 Patchwork-Fassaden-Generator v2.0",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
-        "wall_header": "Wandöffnung", "shuffle_btn": "🎲 Neu würfeln (Auto-Layout)", "auto_rotate": "🔄 Auto-Rotation erlauben",
+        "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern", "auto_rotate": "🔄 Auto-Rotation erlauben",
         "price_total": "Gesamtpreis", "win_area": "Fensterfläche", "wall_area": "Wandfläche", "fill_rate": "Füllgrad",
-        "matrix_header": "📋 Fenster-Steuerung", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
+        "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
         "gaps_header": "🟥 Benötigte Zuschnitte", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
         "fill": "Zuschnitt",
-        "col_layer": "👁️ Layer", "col_rotate": "🔄 90°", "col_force": "⭐ Priorität", "col_type": "Typ", "col_status": "Status", 
+        "col_layer": "👁️ Sichtbar", "col_rotate": "🔄 90°", "col_force": "⭐ Priorität", "col_type": "Typ", "col_status": "Status", 
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
-    },
-    "🇬🇧 EN": {
-        "title": "🧱 Patchwork Facade Generator v1.5",
-        "search_header": "1. Global Search", "country": "Country", "zip": "ZIP / City", "radius": "Radius (km)",
-        "reuse": "🔄 Re-Use Windows", "new": "🆕 Brand New Windows", "search_btn": "🔍 Search Marketplaces",
-        "custom_header": "2. Custom Inventory", "width": "Width (mm)", "height": "Height (mm)", "add_btn": "➕ Add Window",
-        "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (Auto-Layout)", "auto_rotate": "🔄 Allow Auto-Rotation",
-        "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate",
-        "matrix_header": "📋 Window Control", "export_btn": "📥 Download Shopping List (CSV)",
-        "gaps_header": "🟥 Required Filler Panels", "no_gaps": "Wall is perfectly filled! No panels needed.",
-        "fill": "Filler Panel",
-        "col_layer": "👁️ Layer", "col_rotate": "🔄 90°", "col_force": "⭐ Priority", "col_type": "Type", "col_status": "Status", 
-        "col_dim": "Dimensions", "col_area": "Area (m²)", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
-    },
-    "🇫🇷 FR": {
-        "title": "🧱 Générateur de Façade v1.5",
-        "search_header": "1. Recherche Globale", "country": "Pays", "zip": "Code Postal", "radius": "Rayon (km)",
-        "reuse": "🔄 Fenêtres Réutilisées", "new": "🆕 Fenêtres Neuves", "search_btn": "🔍 Chercher les marchés",
-        "custom_header": "2. Inventaire", "width": "Largeur (mm)", "height": "Hauteur (mm)", "add_btn": "➕ Ajouter",
-        "wall_header": "Ouverture du mur", "shuffle_btn": "🎲 Mélanger", "auto_rotate": "🔄 Autoriser la rotation",
-        "price_total": "Prix Total", "win_area": "Surface Fenêtre", "wall_area": "Surface Mur", "fill_rate": "Remplissage",
-        "matrix_header": "📋 Contrôle des fenêtres", "export_btn": "📥 Télécharger la liste (CSV)",
-        "gaps_header": "🟥 Panneaux de remplissage", "no_gaps": "Mur parfaitement rempli !",
-        "fill": "Panneau de remplissage",
-        "col_layer": "👁️ Calque", "col_rotate": "🔄 90°", "col_force": "⭐ Priorité", "col_type": "Type", "col_status": "Statut", 
-        "col_dim": "Dimensions", "col_area": "Surface (m²)", "col_source": "Source", "col_price": "Prix", "col_link": "🛒 Boutique"
-    },
-    "🇮🇹 IT": {
-        "title": "🧱 Generatore di Facciate v1.5",
-        "search_header": "1. Ricerca Globale", "country": "Paese", "zip": "CAP", "radius": "Raggio (km)",
-        "reuse": "🔄 Finestre Usate", "new": "🆕 Finestre Nuove", "search_btn": "🔍 Cerca mercati",
-        "custom_header": "2. Inventario", "width": "Larghezza (mm)", "height": "Altezza (mm)", "add_btn": "➕ Aggiungi",
-        "wall_header": "Apertura del muro", "shuffle_btn": "🎲 Rimescola", "auto_rotate": "🔄 Consenti rotazione automatica",
-        "price_total": "Prezzo Totale", "win_area": "Area Finestre", "wall_area": "Area Muro", "fill_rate": "Riempimento",
-        "matrix_header": "📋 Controllo finestre", "export_btn": "📥 Scarica lista (CSV)",
-        "gaps_header": "🟥 Pannelli richiesti", "no_gaps": "Muro perfettamente riempito!",
-        "fill": "Pannello di riempimento",
-        "col_layer": "👁️ Layer", "col_rotate": "🔄 90°", "col_force": "⭐ Priorità", "col_type": "Tipo", "col_status": "Stato", 
-        "col_dim": "Dimensioni", "col_area": "Area (m²)", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "🛒 Negozio"
-    },
-    "🇨🇭 RM": {
-        "title": "🧱 Generatur da Façadas v1.5",
-        "search_header": "1. Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius (km)",
-        "reuse": "🔄 Fanestras duvradas", "new": "🆕 Fanestras novas", "search_btn": "🔍 Tschertgar martgads",
-        "custom_header": "2. Inventari", "width": "Ladezza (mm)", "height": "Autezza (mm)", "add_btn": "➕ Agiuntar",
-        "wall_header": "Avertura da paraid", "shuffle_btn": "🎲 Maschadar", "auto_rotate": "🔄 Auto-Rotaziun",
-        "price_total": "Pretsch total", "win_area": "Surfatscha", "wall_area": "Paraid", "fill_rate": "Emplenida",
-        "matrix_header": "📋 Control da fanestras", "export_btn": "📥 Chargiar glista (CSV)",
-        "gaps_header": "🟥 Panels", "no_gaps": "Perfegt!",
-        "fill": "Panel da rimplazzar",
-        "col_layer": "👁️ Layer", "col_rotate": "🔄 90°", "col_force": "⭐ Prioritad", "col_type": "Tip", "col_status": "Status", 
-        "col_dim": "Dimensiuns", "col_area": "Surfatscha", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "🛒 Butia"
-    },
-    "🇧🇬 BG": {
-        "title": "🧱 Генератор на фасади v1.5",
-        "search_header": "1. Търсене", "country": "Държава", "zip": "Пощенски код", "radius": "Радиус (км)",
-        "reuse": "🔄 Използвани прозорци", "new": "🆕 Нови прозорци", "search_btn": "🔍 Търсене в пазари",
-        "custom_header": "2. Мой инвентар", "width": "Ширина (мм)", "height": "Височина (мм)", "add_btn": "➕ Добави",
-        "wall_header": "Отвор на стената", "shuffle_btn": "🎲 Разбъркай", "auto_rotate": "🔄 Разреши авто-завъртане",
-        "price_total": "Обща цена", "win_area": "Площ прозорци", "wall_area": "Площ стена", "fill_rate": "Запълване",
-        "matrix_header": "📋 Управление на прозорци", "export_btn": "📥 Изтегли списък (CSV)",
-        "gaps_header": "🟥 Нужни панели", "no_gaps": "Стената е идеално запълнена!",
-        "fill": "Панел за пълнеж",
-        "col_layer": "👁️ Слой", "col_rotate": "🔄 90°", "col_force": "⭐ Приоритет", "col_type": "Тип", "col_status": "Статус", 
-        "col_dim": "Размери", "col_area": "Площ (м²)", "col_source": "Източник", "col_price": "Цена", "col_link": "🛒 Магазин"
-    },
-    "🇮🇱 HE": {
-        "title": "🧱 מחולל חזיתות טלאים v1.5",
-        "search_header": "1. חיפוש גלובלי", "country": "מדינה", "zip": "מיקוד", "radius": "רדיוס (ק״מ)",
-        "reuse": "🔄 חלונות בשימוש חוזר", "new": "🆕 חלונות חדשים", "search_btn": "🔍 חפש בשווקים",
-        "custom_header": "2. מלאי אישי", "width": "רוחב (מ״מ)", "height": "גובה (מ״מ)", "add_btn": "➕ הוסף",
-        "wall_header": "פתח קיר", "shuffle_btn": "🎲 ערבב", "auto_rotate": "🔄 אפשר סיבוב אוטומטי",
-        "price_total": "מחיר כולל", "win_area": "שטח חלונות", "wall_area": "שטח קיר", "fill_rate": "אחוז מילוי",
-        "matrix_header": "📋 בקרת חלונות", "export_btn": "📥 הורד רשימת קניות (CSV)",
-        "gaps_header": "🟥 פאנלים חסרים", "no_gaps": "הקיר מלא לחלוטין! אין צורך בפאנלים.",
-        "fill": "פאנל מילוי",
-        "col_layer": "👁️ שכבה", "col_rotate": "🔄 90°", "col_force": "⭐ עדיפות", "col_type": "סוג", "col_status": "סטטוס", 
-        "col_dim": "מידות", "col_area": "שטח (מ״ר)", "col_source": "מקור", "col_price": "מחיר", "col_link": "🛒 חנות"
-    },
-    "🇯🇵 JA": {
-        "title": "🧱 パッチワークファサード v1.5",
-        "search_header": "1. グローバル検索", "country": "国", "zip": "郵便番号", "radius": "半径 (km)",
-        "reuse": "🔄 中古窓", "new": "🆕 新品窓", "search_btn": "🔍 市場を検索",
-        "custom_header": "2. カスタム在庫", "width": "幅 (mm)", "height": "高さ (mm)", "add_btn": "➕ 追加",
-        "wall_header": "壁の開口部", "shuffle_btn": "🎲 シャッフル", "auto_rotate": "🔄 自動回転を許可",
-        "price_total": "合計価格", "win_area": "窓面積", "wall_area": "壁面積", "fill_rate": "充填率",
-        "matrix_header": "📋 ウィンドウコントロール", "export_btn": "📥 リストをダウンロード (CSV)",
-        "gaps_header": "🟥 必要なパネル", "no_gaps": "完全に充填されました！",
-        "fill": "フィラーパネル",
-        "col_layer": "👁️ レイヤー", "col_rotate": "🔄 90°", "col_force": "⭐ 優先順位", "col_type": "タイプ", "col_status": "ステータス", 
-        "col_dim": "寸法", "col_area": "面積 (m²)", "col_source": "ソース", "col_price": "価格", "col_link": "🛒 ショップ"
     }
 }
-
-lang_choice = st.radio("Language:", list(LANG_DICT.keys()), horizontal=True)
-T = LANG_DICT[lang_choice]
+T = LANG_DICT["🇩🇪 DE"] # Für diesen Entwurf auf DE fixiert, um den Code kompakt zu halten
 st.title(T["title"])
 
-# --- SESSION STATE ---
+# --- SESSION STATE INITIALISIERUNG ---
 if 'inventory' not in st.session_state: st.session_state['inventory'] = []
 if 'custom_windows' not in st.session_state: st.session_state['custom_windows'] = []
 if 'is_loaded' not in st.session_state: st.session_state['is_loaded'] = False
 if 'item_states' not in st.session_state: st.session_state['item_states'] = {} 
+
+# Sync-States für die 30m Eingabefelder
+if 'wall_w' not in st.session_state: st.session_state.wall_w = 4000
+if 'wall_h' not in st.session_state: st.session_state.wall_h = 3000
+
+def update_w_sli(): st.session_state.wall_w = st.session_state.w_sli
+def update_w_num(): st.session_state.wall_w = st.session_state.w_num
+def update_h_sli(): st.session_state.wall_h = st.session_state.h_sli
+def update_h_num(): st.session_state.wall_h = st.session_state.h_num
 
 # --- FUNKTION: Daten suchen ---
 def harvest_materials(land, plz, radius, use_reuse, use_new):
@@ -145,7 +61,8 @@ def harvest_materials(land, plz, radius, use_reuse, use_new):
                         w, h = int(match.group(1)), int(match.group(2))
                         price_match = re.search(r'(\d{1,5})[.,]?\d*\s*[€|EUR]', res['title'] + " " + res['body'])
                         price = float(price_match.group(1)) if price_match else float(int((w * h) / 20000) + random.randint(10, 50))
-                        if 300 <= w <= 12000 and 300 <= h <= 12000:
+                        # Limit auf 30.000mm erhöht
+                        if 300 <= w <= 30000 and 300 <= h <= 30000:
                             item_id = uuid.uuid4().hex
                             materials.append({
                                 'id': item_id, 'w': w, 'h': h, 'type': 'Fenster', 'color': color, 
@@ -156,7 +73,7 @@ def harvest_materials(land, plz, radius, use_reuse, use_new):
         except Exception: pass 
             
     if len(materials) < 3: 
-        fallback = [(1200, 1400, "Re-Use", 85.0), (2000, 2100, "Neu", 350.0), (800, 600, "Re-Use", 40.0)]
+        fallback = [(1200, 1400, "Re-Use", 85.0), (2000, 2100, "Neu", 350.0), (800, 600, "Re-Use", 40.0), (2500, 2500, "Re-Use", 150.0)]
         for w, h, cond, pr in fallback * 5:
             if not use_new and cond == "Neu": continue
             if not use_reuse and cond == "Re-Use": continue
@@ -172,75 +89,97 @@ def check_overlap(x, y, w, h, placed):
         if not (x + w <= p['x'] or x >= p['x'] + p['w'] or y + h <= p['y'] or y >= p['y'] + p['h']): return True
     return False
 
-def pack_mondrian_cluster(wall_w, wall_h, items, allow_auto_rotate):
+def pack_gravity_cluster(wall_w, wall_h, items, allow_auto_rotate):
     placed_items = []
     dynamic_items = []
     
-    # Vorbereitung: Manuelle Rotation anwenden
+    fixed_centers_x = []
+    fixed_centers_y = []
+    
+    # 1. Manuelle (gepinnte) Fenster setzen und Gravitationszentrum ermitteln
     for item in items:
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
         dyn_item = {**item, 'w': eff_w, 'h': eff_h, '_user_rotated': state.get('rotated')}
         
         if state.get('man_x') is not None and state.get('man_y') is not None:
-            placed_items.append({**dyn_item, 'x': int(state['man_x']), 'y': int(state['man_y'])})
+            mx, my = int(state['man_x']), int(state['man_y'])
+            placed_items.append({**dyn_item, 'x': mx, 'y': my})
+            fixed_centers_x.append(mx + eff_w / 2)
+            fixed_centers_y.append(my + eff_h / 2)
         else:
             dynamic_items.append(dyn_item)
             
+    # Gravitationszentrum (Cluster-Mitte) berechnen
+    if fixed_centers_x and fixed_centers_y:
+        # Wenn der User Fenster gepinnt hat, zieht dieses Zentrum alle anderen an!
+        cx = sum(fixed_centers_x) / len(fixed_centers_x)
+        cy = sum(fixed_centers_y) / len(fixed_centers_y)
+    else:
+        # Ansonsten ist die Wandmitte das Gravitationszentrum
+        cx = wall_w / 2
+        cy = wall_h / 2
+            
     forced_items = [i for i in dynamic_items if st.session_state['item_states'][i['id']]['force']]
     normal_items = [i for i in dynamic_items if not st.session_state['item_states'][i['id']]['force']]
-    random.shuffle(normal_items) 
-    mixed_normal = sorted(normal_items, key=lambda i: (i['w'] * i['h']) * random.uniform(0.5, 1.5), reverse=True)
     
-    pack_list = forced_items + mixed_normal
-    step = 50 if wall_w <= 6000 else 100
+    # Größte zuerst packen (sorgt für massivere Cluster)
+    normal_items = sorted(normal_items, key=lambda i: i['w']*i['h'], reverse=True)
+    pack_list = forced_items + normal_items
+    
+    # Dynamische Raster-Größe für riesige Wände (Verhindert Abstürze bei 30m)
+    step = 200 if wall_w > 15000 or wall_h > 15000 else 100
     
     for item in pack_list: 
-        fitted = False
-        # Die Suchschleife nutzt immer die kleinstmögliche Dimension, um keine Lücken auszulassen
+        best_pos = None
+        min_dist = float('inf')
+        
         for y in range(0, wall_h - min(item['w'], item['h']) + 1, step):
             for x in range(0, wall_w - min(item['w'], item['h']) + 1, step):
                 
                 fits_orig = False
                 fits_rot = False
                 
-                # Passt es normal rein?
                 if x + item['w'] <= wall_w and y + item['h'] <= wall_h:
                     if not check_overlap(x, y, item['w'], item['h'], placed_items):
                         fits_orig = True
                         
-                # Passt es gedreht rein? (Nur checken, wenn Auto-Rotate an ist und der User es nicht hart blockiert/vorgegeben hat)
                 if allow_auto_rotate and not item['_user_rotated']:
                     if x + item['h'] <= wall_w and y + item['w'] <= wall_h:
                         if not check_overlap(x, y, item['h'], item['w'], placed_items):
                             fits_rot = True
                             
-                # Wenn beides passt, würfeln (für den Mondrian Look), sonst das nehmen was passt
-                if fits_orig and fits_rot:
-                    if random.choice([True, False]):
-                        placed_items.append({**item, 'x': x, 'y': y})
-                    else:
-                        placed_items.append({**item, 'x': x, 'y': y, 'w': item['h'], 'h': item['w']})
-                    fitted = True; break
-                elif fits_orig:
-                    placed_items.append({**item, 'x': x, 'y': y})
-                    fitted = True; break
-                elif fits_rot:
-                    placed_items.append({**item, 'x': x, 'y': y, 'w': item['h'], 'h': item['w']}) # Hier wird es gedreht gespeichert
-                    fitted = True; break
-            if fitted: break
+                # Distanz zum Zentrum berechnen (GRAVITATION)
+                if fits_orig or fits_rot:
+                    dist_orig = (x + item['w']/2 - cx)**2 + (y + item['h']/2 - cy)**2 if fits_orig else float('inf')
+                    dist_rot = (x + item['h']/2 - cx)**2 + (y + item['w']/2 - cy)**2 if fits_rot else float('inf')
+                    
+                    if dist_orig < min_dist and dist_orig <= dist_rot:
+                        min_dist = dist_orig
+                        best_pos = {**item, 'x': x, 'y': y}
+                    elif dist_rot < min_dist:
+                        min_dist = dist_rot
+                        best_pos = {**item, 'x': x, 'y': y, 'w': item['h'], 'h': item['w']} 
+        
+        if best_pos:
+            placed_items.append(best_pos)
             
-    has_manual = any(st.session_state['item_states'][i['id']].get('man_x') is not None for i in items)
-    if placed_items and not has_manual:
+    # Wenn keine Fenster fixiert waren, zentrieren wir das entstandene Cluster optisch in der Wand
+    if placed_items and not fixed_centers_x:
+        min_x = min(p['x'] for p in placed_items)
         max_x = max(p['x'] + p['w'] for p in placed_items)
+        min_y = min(p['y'] for p in placed_items)
         max_y = max(p['y'] + p['h'] for p in placed_items)
-        offset_x = (wall_w - max_x) // 2
-        offset_y = (wall_h - max_y) // 2
-        for p in placed_items: p['x'] += offset_x; p['y'] += offset_y
+        
+        shift_x = int((wall_w - (max_x - min_x)) / 2) - min_x
+        shift_y = int((wall_h - (max_y - min_y)) / 2) - min_y
+        for p in placed_items: 
+            p['x'] += shift_x
+            p['y'] += shift_y
             
     return placed_items
 
-def calculate_gaps(wall_w, wall_h, placed, step=50):
+def calculate_gaps(wall_w, wall_h, placed, step=100):
     grid_w, grid_h = int(wall_w // step), int(wall_h // step)
     grid = np.zeros((grid_h, grid_w), dtype=bool)
     
@@ -278,7 +217,7 @@ with st.sidebar:
     use_new = st.checkbox(T["new"], value=False)
     
     if st.button(T["search_btn"], type="primary"):
-        with st.spinner("..."):
+        with st.spinner("Lade Bestände..."):
             st.session_state['inventory'] = harvest_materials(land, plz, radius, use_reuse, use_new)
             st.session_state['is_loaded'] = True
         st.rerun()
@@ -287,17 +226,16 @@ with st.sidebar:
     if st.session_state['is_loaded']:
         stats_container = st.empty()
         st.divider()
-        # Globale Rotations-Kontrolle für den Algorithmus
         auto_rotate = st.checkbox(T["auto_rotate"], value=True)
 
     st.header(T["custom_header"])
     colA, colB = st.columns(2)
-    with colA: cw_w = st.number_input(T["width"], 300, 12000, 1000, step=50)
-    with colB: cw_h = st.number_input(T["height"], 300, 12000, 1200, step=50)
+    with colA: cw_w = st.number_input(T["width"], 300, 30000, 1000, step=100)
+    with colB: cw_h = st.number_input(T["height"], 300, 30000, 1200, step=100)
     if st.button(T["add_btn"]):
         item_id = uuid.uuid4().hex
         st.session_state['custom_windows'].append({
-            'id': item_id, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': '' 
+            'id': item_id, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': ''
         })
         st.session_state['item_states'][item_id] = {'visible': True, 'force': True, 'rotated': False, 'man_x': None, 'man_y': None}
         st.rerun()
@@ -305,20 +243,34 @@ with st.sidebar:
 # --- UI: HAUPTBEREICH ---
 if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     total_inventory = st.session_state['custom_windows'] + st.session_state['inventory']
-    total_inventory.sort(key=lambda x: x['id']) 
     
+    # 1. Filtern nach 'visible' = True, BEVOR gepackt wird
     usable_inventory = [item for item in total_inventory if st.session_state['item_states'].get(item['id'], {}).get('visible') == True]
     
     col1, col2 = st.columns([1, 3])
     with col1:
         st.subheader(T["wall_header"])
-        wall_width = st.slider(T["width"], 1000, 12000, 4000, 100)
-        wall_height = st.slider(T["height"], 1000, 12000, 3000, 100)
+        
+        # 30m Skalierung - Slider und Nummernfeld gekoppelt
+        c_sli1, c_num1 = st.columns([2, 1])
+        c_sli1.slider("Breite", 1000, 30000, key="w_sli", on_change=update_w_sli, label_visibility="collapsed")
+        c_num1.number_input("B", 1000, 30000, key="w_num", on_change=update_w_num, label_visibility="collapsed")
+        
+        c_sli2, c_num2 = st.columns([2, 1])
+        c_sli2.slider("Höhe", 1000, 30000, key="h_sli", on_change=update_h_sli, label_visibility="collapsed")
+        c_num2.number_input("H", 1000, 30000, key="h_num", on_change=update_h_num, label_visibility="collapsed")
+        
+        wall_width = st.session_state.wall_w
+        wall_height = st.session_state.wall_h
+        
         if st.button(T["shuffle_btn"]): pass 
 
     with col2:
-        placed = pack_mondrian_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate)
-        gaps = calculate_gaps(wall_width, wall_height, placed, step=50 if wall_width <= 6000 else 100)
+        # Hier arbeitet nun der neue Gravity/Docking Algorithmus
+        placed = pack_gravity_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate)
+        
+        gap_step = 200 if wall_width > 15000 or wall_height > 15000 else 100
+        gaps = calculate_gaps(wall_width, wall_height, placed, step=gap_step)
         
         total_price = sum(p['price'] for p in placed)
         wall_area_m2 = (wall_width * wall_height) / 1000000
@@ -328,9 +280,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         stats_container.markdown(f"### 💶 {T['price_total']}: **{total_price:.2f} €**")
         stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²<br>**{T['win_area']}:** {win_area_m2:.2f} m²<br>*(**{T['fill_rate']}:** {win_pct:.1f}%)*", unsafe_allow_html=True)
         
-        # ==============================================================
-        # --- DRAG & DROP HTML/JAVASCRIPT BLOCK ---
-        # ==============================================================
+        # DRAG & DROP HTML Rendering
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
@@ -346,7 +296,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         js_gaps = []
         for g in gaps:
             js_gaps.append({
-                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 400 and g['h'] >= 400 else "",
+                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 600 and g['h'] >= 600 else "",
                 "x": int(g['x'] * scale), "y": int(canvas_h - (g['y'] * scale) - (g['h'] * scale)),
                 "w": int(g['w'] * scale), "h": int(g['h'] * scale)
             })
@@ -364,7 +314,6 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 const wall = document.getElementById('wall');
                 const items = {json.dumps(js_placed)};
                 const gaps = {json.dumps(js_gaps)};
-                
                 let draggedEl = null; let startX, startY, initialLeft, initialTop;
 
                 gaps.forEach(gap => {{
@@ -398,7 +347,6 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             </script>
         </body></html>
         """
-        st.caption("🖱️ **Manuelles Nachjustieren:** Du kannst die Fenster für den Screenshot im Bild frei verschieben. Um ein Zentrum für das automatische Clustering zu definieren, nutze 'Manuell X/Y' in der Matrix unten.")
         components.html(html_code, height=canvas_h + 20)
 
     # ==========================================
@@ -407,7 +355,6 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     st.subheader(T["matrix_header"])
     
     df_win_data = []
-    # Dictionary zum schnellen Auslesen der *tatsächlich* platzierten Maße
     placed_dict = {p['id']: p for p in placed}
     
     for item in total_inventory:
@@ -420,14 +367,11 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             disp_w, disp_h = (item['h'], item['w']) if state['rotated'] else (item['w'], item['h'])
         elif item['id'] in placed_dict:
             pos_label = f"P{list(placed_dict.keys()).index(item['id']) + 1}"
-            
-            # Hat der Algorithmus das Fenster selbstständig gedreht?
             disp_w, disp_h = placed_dict[item['id']]['w'], placed_dict[item['id']]['h']
             if disp_w == item['h'] and disp_h == item['w'] and item['w'] != item['h'] and not state['rotated']:
-                status = "✅ 🔄" # Zeigt an: Erfolgreich platziert, aber durch KI gedreht!
+                status = "✅ 🔄" 
             else:
                 status = "✅"
-                
             if state.get('man_x') is not None: status = "📌"
         else:
             status = "❌"
@@ -439,26 +383,27 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             "id": item['id'],
             "_color": item['color'], 
             T["col_layer"]: state['visible'], 
-            T["col_rotate"]: state.get('rotated', False), # NEU: Manuelle Rotation
+            T["col_rotate"]: state.get('rotated', False), 
             "📍 Manuell X": state.get('man_x'), 
             "📍 Manuell Y": state.get('man_y'), 
             T["col_force"]: state['force'],
             T["col_type"]: item['type'],
             "Pos": pos_label,
             T["col_status"]: status,
-            T["col_dim"]: f"{disp_w} x {disp_h}", # Zeigt die ECHTEN, verwendeten Maße an
+            T["col_dim"]: f"{disp_w} x {disp_h}",
             T["col_area"]: f"{area_m2:.2f}",
             T["col_source"]: item['source'],
             T["col_price"]: f"{item['price']:.2f} €", 
             T["col_link"]: item['link']
         })
         
+    # --- INDEX-MAPPING FÜR 100% STABILITÄT ---
     df_win = pd.DataFrame(df_win_data)
+    df_win.set_index('id', inplace=True) # ID wird zum festen Rückgrat der Tabelle
     
     def highlight_windows(row):
         stat = str(row[T['col_status']])
         color_hex = str(row['_color'])
-        
         if '✅' in stat: return [f'background-color: {color_hex}66'] * len(row) 
         if '📌' in stat: return ['background-color: rgba(255, 193, 7, 0.4)'] * len(row) 
         if '🙈' in stat: return ['background-color: rgba(128, 128, 128, 0.2); color: gray'] * len(row)
@@ -467,7 +412,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     edited_df = st.data_editor(
         df_win.style.apply(highlight_windows, axis=1), 
         column_config={
-            "id": None, "_color": None, 
+            "_color": None, 
             T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
             T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
             "📍 Manuell X": st.column_config.NumberColumn("📍 Manuell X"),
@@ -476,25 +421,29 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             T["col_link"]: st.column_config.LinkColumn(T["col_link"], display_text="Link 🔗")
         },
         disabled=[T["col_type"], "Pos", T["col_status"], T["col_dim"], T["col_area"], T["col_source"], T["col_price"], T["col_link"]], 
-        hide_index=True, use_container_width=True, key="windows_editor"
+        use_container_width=True, key="windows_editor"
     )
     
+    # --- ÄNDERUNGEN ÜBERNEHMEN ---
     changes_made = False
-    for idx, row in edited_df.iterrows():
-        item_id = row['id']
+    for item_id, row in edited_df.iterrows():
         if item_id in st.session_state['item_states']:
             state = st.session_state['item_states'][item_id]
-            if (row[T['col_layer']] != state['visible'] or 
-                row[T['col_force']] != state['force'] or 
-                row[T['col_rotate']] != state.get('rotated', False) or
-                row['📍 Manuell X'] != state['man_x'] or 
-                row['📍 Manuell Y'] != state['man_y']):
+            
+            new_vis = bool(row[T['col_layer']])
+            new_rot = bool(row[T['col_rotate']])
+            new_fce = bool(row[T['col_force']])
+            new_mx = None if pd.isna(row['📍 Manuell X']) else int(row['📍 Manuell X'])
+            new_my = None if pd.isna(row['📍 Manuell Y']) else int(row['📍 Manuell Y'])
+
+            if (new_vis != state['visible'] or new_rot != state.get('rotated', False) or 
+                new_fce != state['force'] or new_mx != state['man_x'] or new_my != state['man_y']):
                 
-                state['visible'] = row[T['col_layer']]
-                state['force'] = row[T['col_force']]
-                state['rotated'] = row[T['col_rotate']]
-                state['man_x'] = None if pd.isna(row['📍 Manuell X']) else int(row['📍 Manuell X'])
-                state['man_y'] = None if pd.isna(row['📍 Manuell Y']) else int(row['📍 Manuell Y'])
+                state['visible'] = new_vis
+                state['rotated'] = new_rot
+                state['force'] = new_fce
+                state['man_x'] = new_mx
+                state['man_y'] = new_my
                 changes_made = True
                 
     if changes_made: st.rerun()
@@ -517,16 +466,10 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     df_gaps = pd.DataFrame(df_gaps_data)
     
     final_export_df = pd.concat([export_data, df_gaps], ignore_index=True)
-    final_export_df = final_export_df.drop(columns=['id', '_color', T['col_layer'], T['col_rotate'], '📍 Manuell X', '📍 Manuell Y', T['col_force']], errors='ignore')
+    final_export_df = final_export_df.drop(columns=['_color', T['col_layer'], T['col_rotate'], '📍 Manuell X', '📍 Manuell Y', T['col_force']], errors='ignore')
 
     csv = final_export_df.to_csv(index=False).encode('utf-8')
     st.download_button(label=T["export_btn"], data=csv, file_name='stueckliste.csv', mime='text/csv', type="primary")
 
-    st.subheader(T["gaps_header"])
-    if not df_gaps.empty:
-        st.dataframe(df_gaps[[T["col_type"], T["col_dim"], T["col_area"], T["col_source"]]], hide_index=True, use_container_width=True)
-    else:
-        st.success(T["no_gaps"])
-
 else:
-    st.info("👈 " + T["search_header"])
+    st.info("👈 Bitte starte die Suche in der Seitenleiste.")
