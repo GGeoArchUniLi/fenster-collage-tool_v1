@@ -8,31 +8,17 @@ import uuid
 import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v3.0", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v3.1", layout="wide")
 
-# --- HACK: VERSTECKTE KOMMUNIKATION ZWISCHEN JAVASCRIPT UND PYTHON ---
-# Macht das Eingabefeld unsichtbar, das wir als Datenbrücke nutzen
-st.markdown("""
-    <style>
-    div[data-testid="stTextInput"]:has(input[aria-label="js_bridge"]) {
-        position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-js_bridge_val = st.text_input("js_bridge", key="js_bridge", label_visibility="collapsed")
-if 'last_js_ts' not in st.session_state:
-    st.session_state.last_js_ts = 0
-
-# --- SPRACH-WÖRTERBUCH (Alle 9 Sprachen) ---
+# --- SPRACH-WÖRTERBUCH (Alle Sprachen inkl. Spanisch) ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v3.0",
+        "title": "🧱 Patchwork-Fassaden-Generator v3.1",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
         "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", 
-        "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Positionen beim Clustern beibehalten",
+        "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Positionen beibehalten",
         "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)",
         "price_total": "Gesamtpreis Fenster", "win_area": "Gesamtfläche Fenster", "wall_area": "Fläche Wandöffnung", "fill_rate": "Füllgrad",
         "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
@@ -42,7 +28,7 @@ LANG_DICT = {
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
     },
     "🇪🇸 ES": {
-        "title": "🧱 Generador de Fachadas v3.0",
+        "title": "🧱 Generador de Fachadas v3.1",
         "search_header": "1. Búsqueda Global", "country": "País", "zip": "C.P. / Ciudad", "radius": "Radio (km)",
         "reuse": "🔄 Ventanas Usadas", "new": "🆕 Ventanas Nuevas", "search_btn": "🔍 Buscar en mercados",
         "custom_header": "2. Inventario Propio", "width": "Ancho (mm)", "height": "Alto (mm)", "add_btn": "➕ Añadir",
@@ -57,10 +43,10 @@ LANG_DICT = {
         "col_dim": "Dimensiones", "col_area": "Área (m²)", "col_source": "Origen", "col_price": "Precio", "col_link": "🛒 Tienda"
     },
     "🇬🇧 EN": {
-        "title": "🧱 Patchwork Facade Generator v3.0", "search_header": "1. Global Search", "country": "Country", "zip": "ZIP / City", "radius": "Radius (km)", "reuse": "🔄 Re-Use Windows", "new": "🆕 Brand New Windows", "search_btn": "🔍 Search Marketplaces", "custom_header": "2. Custom Inventory", "width": "Width (mm)", "height": "Height (mm)", "add_btn": "➕ Add Window", "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (AI)", "auto_rotate": "🔄 Allow Auto-Rotation", "lock_pinned": "🔒 Lock pinned positions", "symmetry": "📐 Symmetrical Cluster", "chaos": "Variance / Chaos (%)", "opt_gaps_btn": "✂️ Toggle Fillers (H/V)", "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate", "matrix_header": "📋 Window Control", "export_btn": "📥 Download Shopping List", "gaps_header": "🟥 Required Filler Panels", "no_gaps": "Wall is perfectly filled!", "fill": "Filler Panel", "col_layer": "👁️ Visible", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Status", "col_dim": "Dimensions", "col_area": "Area (m²)", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
+        "title": "🧱 Patchwork Facade Generator v3.1", "search_header": "1. Global Search", "country": "Country", "zip": "ZIP / City", "radius": "Radius (km)", "reuse": "🔄 Re-Use Windows", "new": "🆕 Brand New Windows", "search_btn": "🔍 Search Marketplaces", "custom_header": "2. Custom Inventory", "width": "Width (mm)", "height": "Height (mm)", "add_btn": "➕ Add Window", "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (AI)", "auto_rotate": "🔄 Allow Auto-Rotation", "lock_pinned": "🔒 Lock pinned positions", "symmetry": "📐 Symmetrical Cluster", "chaos": "Variance / Chaos (%)", "opt_gaps_btn": "✂️ Toggle Fillers (H/V)", "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate", "matrix_header": "📋 Window Control", "export_btn": "📥 Download Shopping List", "gaps_header": "🟥 Required Filler Panels", "no_gaps": "Wall is perfectly filled!", "fill": "Filler Panel", "col_layer": "👁️ Visible", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Status", "col_dim": "Dimensions", "col_area": "Area (m²)", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
     },
     "🇫🇷 FR": {
-        "title": "🧱 Générateur de Façade v3.0", "search_header": "1. Recherche Globale", "country": "Pays", "zip": "Code Postal", "radius": "Rayon (km)", "reuse": "🔄 Fenêtres Réutilisées", "new": "🆕 Fenêtres Neuves", "search_btn": "🔍 Chercher les marchés", "custom_header": "2. Inventaire", "width": "Largeur (mm)", "height": "Hauteur (mm)", "add_btn": "➕ Ajouter", "wall_header": "Ouverture", "shuffle_btn": "🎲 Mélanger (IA)", "auto_rotate": "🔄 Autoriser la rotation", "lock_pinned": "🔒 Verrouiller positions", "symmetry": "📐 Clúster symétrique", "chaos": "Chaos (%)", "opt_gaps_btn": "✂️ Alterner remplissage", "price_total": "Prix Total", "win_area": "Surface Fenêtre", "wall_area": "Surface Mur", "fill_rate": "Remplissage", "matrix_header": "📋 Contrôle", "export_btn": "📥 Télécharger (CSV)", "gaps_header": "🟥 Panneaux de remplissage", "no_gaps": "Parfaitement rempli!", "fill": "Panneau", "col_layer": "👁️ Visibilité", "col_pin": "📌 Épingler", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Statut", "col_dim": "Dimensions", "col_area": "Surface (m²)", "col_source": "Source", "col_price": "Prix", "col_link": "🛒 Lien"
+        "title": "🧱 Générateur de Façade v3.1", "search_header": "1. Recherche Globale", "country": "Pays", "zip": "Code Postal", "radius": "Rayon (km)", "reuse": "🔄 Fenêtres Réutilisées", "new": "🆕 Fenêtres Neuves", "search_btn": "🔍 Chercher les marchés", "custom_header": "2. Inventaire", "width": "Largeur (mm)", "height": "Hauteur (mm)", "add_btn": "➕ Ajouter", "wall_header": "Ouverture", "shuffle_btn": "🎲 Mélanger (IA)", "auto_rotate": "🔄 Autoriser la rotation", "lock_pinned": "🔒 Verrouiller positions", "symmetry": "📐 Clúster symétrique", "chaos": "Chaos (%)", "opt_gaps_btn": "✂️ Alterner remplissage", "price_total": "Prix Total", "win_area": "Surface Fenêtre", "wall_area": "Surface Mur", "fill_rate": "Remplissage", "matrix_header": "📋 Contrôle", "export_btn": "📥 Télécharger (CSV)", "gaps_header": "🟥 Panneaux de remplissage", "no_gaps": "Parfaitement rempli!", "fill": "Panneau", "col_layer": "👁️ Visibilité", "col_pin": "📌 Épingler", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Statut", "col_dim": "Dimensions", "col_area": "Surface (m²)", "col_source": "Source", "col_price": "Prix", "col_link": "🛒 Lien"
     },
     "🇮🇹 IT": {"title": "🧱 Generatore di Facciate", "search_header": "Ricerca", "country": "Paese", "zip": "CAP", "radius": "Raggio", "reuse": "🔄 Usate", "new": "🆕 Nuove", "search_btn": "🔍 Cerca", "custom_header": "Inventario", "width": "Larghezza", "height": "Altezza", "add_btn": "➕ Aggiungi", "wall_header": "Muro", "shuffle_btn": "🎲 Rimescola", "auto_rotate": "🔄 Auto-Rotazione", "lock_pinned": "🔒 Blocca", "symmetry": "📐 Simmetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Tagli", "price_total": "Prezzo", "win_area": "Area Fin.", "wall_area": "Area Muro", "fill_rate": "Riempimento", "matrix_header": "📋 Matrice", "export_btn": "📥 Scarica", "gaps_header": "🟥 Pannelli", "no_gaps": "Perfetto!", "fill": "Pannello", "col_layer": "👁️ Vis.", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tipo", "col_status": "Stato", "col_dim": "Dim.", "col_area": "Area", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "🛒 Shop"},
     "🇨🇭 RM": {"title": "🧱 Generatur da Façadas", "search_header": "Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius", "reuse": "🔄 Duvradas", "new": "🆕 Novas", "search_btn": "🔍 Tschertgar", "custom_header": "Inventari", "width": "Ladezza", "height": "Autezza", "add_btn": "➕ Agiuntar", "wall_header": "Paraid", "shuffle_btn": "🎲 Maschadar", "auto_rotate": "🔄 Rotaziun", "lock_pinned": "🔒 Bloccar", "symmetry": "📐 Simetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Panels", "price_total": "Pretsch", "win_area": "Surfatscha Fan.", "wall_area": "Paraid", "fill_rate": "Emplenida", "matrix_header": "📋 Matrix", "export_btn": "📥 Chargiar", "gaps_header": "🟥 Panels", "no_gaps": "Perfegt!", "fill": "Panel", "col_layer": "👁️ Vis.", "col_pin": "📌 Fix", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tip", "col_status": "Status", "col_dim": "Dimensiuns", "col_area": "Surf.", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "🛒 Butia"},
@@ -83,37 +69,6 @@ if 'pos_counter' not in st.session_state: st.session_state['pos_counter'] = 1
 if 'layout_seed' not in st.session_state: st.session_state['layout_seed'] = 42 
 if 'gap_toggle' not in st.session_state: st.session_state['gap_toggle'] = False
 
-# VERARBEITUNG DER DATEN AUS DEM JS BRÜCKEN-HACK (Drag&Drop Updates)
-if js_bridge_val:
-    try:
-        data = json.loads(js_bridge_val)
-        ts = data.get("ts", 0)
-        if ts > st.session_state.last_js_ts:
-            st.session_state.last_js_ts = ts
-            
-            action = data.get("action")
-            item_id = data.get("id")
-            state = st.session_state['item_states'].get(item_id)
-            
-            if state:
-                if action == "rotate":
-                    state['rotated'] = not state.get('rotated', False)
-                elif action == "pin":
-                    state['pinned'] = not state.get('pinned', False)
-                    if state['pinned']:
-                        state['man_x'] = data.get("x")
-                        state['man_y'] = data.get("y")
-                    else:
-                        state['man_x'] = None
-                        state['man_y'] = None
-                elif action == "move":
-                    state['man_x'] = data.get("x")
-                    state['man_y'] = data.get("y")
-                    state['pinned'] = True # Beim Bewegen mit der Maus wird es sofort gepinnt!
-            st.rerun()
-    except Exception as e:
-        pass
-
 # --- SLIDER SYNCHRONISATION ---
 if 'w_sli' not in st.session_state: st.session_state.w_sli = 4000
 if 'w_num' not in st.session_state: st.session_state.w_num = 4000
@@ -124,6 +79,7 @@ def sync_w_from_sli(): st.session_state.w_num = st.session_state.w_sli
 def sync_w_from_num(): st.session_state.w_sli = st.session_state.w_num
 def sync_h_from_sli(): st.session_state.h_num = st.session_state.h_sli
 def sync_h_from_num(): st.session_state.h_sli = st.session_state.h_num
+
 def shuffle_layout(): st.session_state['layout_seed'] = random.randint(1, 10000)
 def optimize_gaps(): st.session_state['gap_toggle'] = not st.session_state['gap_toggle']
 
@@ -183,6 +139,7 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
     dynamic_items = [i for i in items if not st.session_state['item_states'][i['id']].get('pinned')]
     fixed_x, fixed_y = [], []
     
+    # 1. Gepinnte Elemente setzen
     for item in pinned_items:
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
@@ -230,6 +187,7 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
     
     step = 200 if wall_w > 15000 or wall_h > 15000 else 100
     
+    # 2. Dynamische Elemente platzieren
     for item in pack_list: 
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
@@ -276,6 +234,7 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
             
     return placed_items
 
+# ALGORITHMUS: Exakter Sweep-Line Zuschnitt (Ohne Überlappung)
 def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
     x_coords = {0, wall_w}
     y_coords = {0, wall_h}
@@ -334,6 +293,11 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
+    if st.session_state['is_loaded']:
+        st.header("📊 Info")
+        stats_container = st.empty()
+        st.divider()
+
     st.header(T["custom_header"])
     colA, colB = st.columns(2)
     with colA: cw_w = st.number_input(T["width"], 300, 30000, 1000, step=100, key="cw_w_in")
@@ -396,7 +360,9 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         m_col3.metric(T["fill_rate"], f"{win_pct:.1f} %")
         m_col4.metric(T["price_total"], f"{total_price:.2f} €")
         
-        # --- INTERAKTIVES DRAG & DROP HTML RENDERING (BIDGE) ---
+        stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²\n\n**{T['win_area']}:** {win_area_m2:.2f} m²\n\n**{T['fill_rate']}:** {win_pct:.1f}%\n\n### 💶 {T['price_total']}:\n## **{total_price:.2f} €**")
+        
+        # --- HTML RENDERING (VISUELLE SKIZZE) ---
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
@@ -432,40 +398,17 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; z-index: 10; flex-direction: column; }}
             .window.pinned {{ cursor: not-allowed; opacity: 0.95; border: 4px solid #222; box-shadow: none; }}
             .window:active:not(.pinned) {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
-            .win-icons {{ position: absolute; top: 2px; right: 2px; display: flex; gap: 3px; z-index: 20; }}
-            .win-btn {{ background: rgba(255,255,255,0.9); border: 1px solid #555; border-radius: 3px; font-size: 10px; cursor: pointer; padding: 2px 4px; pointer-events: auto; }}
-            .win-btn:hover {{ background: #fff; transform: scale(1.1); }}
             .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }}
         </style></head><body>
             <div class="container">
-                <div class="scale-figure" title="Scale Figure (1,78m)"></div>
+                <div class="scale-figure" title="Maßstabsfigur (1,78m)"></div>
                 <div id="wall"></div>
             </div>
             <script>
-                const scale = {scale};
-                const canvas_h = {canvas_h};
                 const wall = document.getElementById('wall');
                 const items = {json.dumps(js_placed)};
                 const gaps = {json.dumps(js_gaps)};
                 let draggedEl = null; let startX, startY, initialLeft, initialTop;
-
-                // Sendet Aktionen an Python (Bidirektionaler Hack)
-                function sendAction(action, id, el) {{
-                    const px_x = parseInt(el.style.left, 10);
-                    const px_y = parseInt(el.style.top, 10);
-                    const px_h = parseInt(el.style.height, 10);
-                    const mm_x = Math.round(px_x / scale);
-                    const mm_y = Math.round((canvas_h - px_y - px_h) / scale);
-                    
-                    const data = {{action: action, id: id, x: mm_x, y: mm_y, ts: Date.now()}};
-                    const parent = window.parent.document;
-                    const input = parent.querySelector('input[aria-label="js_bridge"]');
-                    if (input) {{
-                        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                        setter.call(input, JSON.stringify(data));
-                        input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                    }}
-                }}
 
                 gaps.forEach(gap => {{
                     const el = document.createElement('div');
@@ -479,31 +422,14 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                     el.className = 'window'; 
                     if (item.is_pinned) el.classList.add('pinned');
                     el.id = item.id; 
-                    
-                    el.innerHTML = '<div class="win-icons">' +
-                                   '<div class="win-btn rot-btn" title="Rotieren (Syncs with Matrix)">🔄</div>' +
-                                   '<div class="win-btn pin-btn" title="Anpinnen/Lösen (Syncs with Matrix)">📌</div>' +
-                                   '</div>' +
-                                   '<div style="margin-top:12px; pointer-events:none;">' + item.label + '</div>';
-                                   
+                    el.innerHTML = '<div style="pointer-events:none;">' + item.label + '</div>';
                     el.style.backgroundColor = item.color; el.style.width = item.w + 'px'; el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
-                    
-                    // Buttons lösen Python Aktionen aus!
-                    el.querySelector('.rot-btn').addEventListener('click', (e) => {{
-                        e.stopPropagation();
-                        sendAction("rotate", item.id, el);
-                    }});
-                    el.querySelector('.pin-btn').addEventListener('click', (e) => {{
-                        e.stopPropagation();
-                        sendAction("pin", item.id, el);
-                    }});
                     
                     el.addEventListener('mousedown', dragStart);
                     wall.appendChild(el);
                 }});
 
                 function dragStart(e) {{
-                    if (e.target.classList.contains('win-btn')) return;
                     let targetWindow = e.target.closest('.window');
                     if (!targetWindow || targetWindow.classList.contains('pinned')) return;
                     draggedEl = targetWindow; startX = e.clientX; startY = e.clientY;
@@ -518,15 +444,12 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 function dragEnd(e) {{ 
                     document.removeEventListener('mousemove', drag); 
                     document.removeEventListener('mouseup', dragEnd); 
-                    if (draggedEl) {{
-                        sendAction("move", draggedEl.id, draggedEl);
-                        draggedEl = null; 
-                    }}
+                    draggedEl = null; 
                 }}
             </script>
         </body></html>
         """
-        st.caption("🖱️ **Voll interaktiv:** Du kannst Fenster jetzt mit der Maus ziehen, im Bild pinnen oder drehen. Es synchronisiert sich live mit der KI und der Matrix unten!")
+        st.caption("ℹ️ **Visuelles Skizzieren:** Verschieben Sie freie Fenster mit der Maus, um ein Gefühl für das Layout zu bekommen. **Um eine Position für den Algorithmus festzusetzen (zu pinnen) oder ein Fenster zu rotieren, nutzen Sie bitte ausschließlich die Matrix unten.**")
         components.html(html_code, height=canvas_h + 50)
 
     # ==========================================
@@ -575,7 +498,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         df_win.style.apply(highlight_windows, axis=1), 
         column_config={
             "_color": None, T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
-            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"]),
+            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Speichert die aktuelle Position fest ein."),
             "📍 Man X": st.column_config.NumberColumn("📍 Man X"),
             "📍 Man Y": st.column_config.NumberColumn("📍 Man Y"), T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
             T["col_force"]: st.column_config.CheckboxColumn(T["col_force"])
