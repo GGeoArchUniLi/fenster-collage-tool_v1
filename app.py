@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -6,22 +7,25 @@ import re
 import random
 import uuid
 import json
-from duckduckgo_search import DDGS
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    pass
 
 st.set_page_config(page_title="Patchwork Facade Generator Pro", layout="wide")
 
 # --- SPRACH-WÖRTERBUCH (Alle 9 Sprachen inkl. Spanisch) ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v4.0", "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)", "reuse": "🔄 Gebraucht", "new": "🆕 Neu", "search_btn": "🔍 Suchen", "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen", "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Fenster beim Würfeln behalten", "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)", "price_total": "Gesamtpreis Fenster", "win_area": "Gesamtfläche Fenster", "wall_area": "Fläche Wandöffnung", "fill_rate": "Füllgrad", "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 CSV Einkaufsliste", "gaps_header": "🟥 Benötigte Zuschnitte (Exakt, keine Überlappung)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.", "fill": "Zuschnitt Panel", "col_layer": "👁️ Sichtbar", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
+        "title": "🧱 Patchwork-Fassaden-Generator v4.1", "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)", "reuse": "🔄 Gebraucht", "new": "🆕 Neu", "search_btn": "🔍 Suchen", "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen", "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Fenster beim Würfeln behalten", "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)", "price_total": "Gesamtpreis Fenster", "win_area": "Gesamtfläche Fenster", "wall_area": "Fläche Wandöffnung", "fill_rate": "Füllgrad", "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 CSV Einkaufsliste", "gaps_header": "🟥 Benötigte Zuschnitte (Exakt, keine Überlappung)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.", "fill": "Zuschnitt Panel", "col_layer": "👁️ Sichtbar", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
     },
     "🇪🇸 ES": {
-        "title": "🧱 Generador de Fachadas v4.0", "search_header": "1. Búsqueda Global", "country": "País", "zip": "C.P.", "radius": "Radio (km)", "reuse": "🔄 Usado", "new": "🆕 Nuevo", "search_btn": "🔍 Buscar", "custom_header": "2. Inventario Propio", "width": "Ancho (mm)", "height": "Alto (mm)", "add_btn": "➕ Añadir", "wall_header": "Apertura (hasta 30m)", "shuffle_btn": "🎲 Reagrupar (IA)", "auto_rotate": "🔄 Auto-rotación", "lock_pinned": "🔒 Mantener posiciones fijadas", "symmetry": "📐 Clúster Simétrico", "chaos": "Caos (%)", "opt_gaps_btn": "✂️ Alternar cortes (H/V)", "price_total": "Precio Total", "win_area": "Área de Ventanas", "wall_area": "Área de Apertura", "fill_rate": "Tasa de relleno", "matrix_header": "📋 Matriz de Control", "export_btn": "📥 Exportar CSV", "gaps_header": "🟥 Paneles de Relleno (Sin superposición)", "no_gaps": "¡Muro perfecto!", "fill": "Panel de corte", "col_layer": "👁️ Visible", "col_pin": "📌 Fijar", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tipo", "col_status": "Estado", "col_dim": "Dimensiones", "col_area": "Área (m²)", "col_source": "Origen", "col_price": "Precio", "col_link": "🛒 Tienda"
+        "title": "🧱 Generador de Fachadas v4.1", "search_header": "1. Búsqueda Global", "country": "País", "zip": "C.P.", "radius": "Radio (km)", "reuse": "🔄 Usado", "new": "🆕 Nuevo", "search_btn": "🔍 Buscar", "custom_header": "2. Inventario Propio", "width": "Ancho (mm)", "height": "Alto (mm)", "add_btn": "➕ Añadir", "wall_header": "Apertura (hasta 30m)", "shuffle_btn": "🎲 Reagrupar (IA)", "auto_rotate": "🔄 Auto-rotación", "lock_pinned": "🔒 Mantener posiciones fijadas", "symmetry": "📐 Clúster Simétrico", "chaos": "Caos (%)", "opt_gaps_btn": "✂️ Alternar cortes (H/V)", "price_total": "Precio Total", "win_area": "Área de Ventanas", "wall_area": "Área de Apertura", "fill_rate": "Tasa de relleno", "matrix_header": "📋 Matriz de Control", "export_btn": "📥 Exportar CSV", "gaps_header": "🟥 Paneles de Relleno (Sin superposición)", "no_gaps": "¡Muro perfecto!", "fill": "Panel de corte", "col_layer": "👁️ Visible", "col_pin": "📌 Fijar", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tipo", "col_status": "Estado", "col_dim": "Dimensiones", "col_area": "Área (m²)", "col_source": "Origen", "col_price": "Precio", "col_link": "🛒 Tienda"
     },
     "🇬🇧 EN": {
-        "title": "🧱 Facade Generator v4.0", "search_header": "1. Search", "country": "Country", "zip": "ZIP", "radius": "Radius", "reuse": "🔄 Used", "new": "🆕 New", "search_btn": "🔍 Search", "custom_header": "2. Custom Inventory", "width": "Width", "height": "Height", "add_btn": "➕ Add", "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (AI)", "auto_rotate": "🔄 Auto-Rotation", "lock_pinned": "🔒 Lock pinned", "symmetry": "📐 Symmetry", "chaos": "Chaos", "opt_gaps_btn": "✂️ Toggle Fillers", "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate", "matrix_header": "📋 Window Control", "export_btn": "📥 Export CSV", "gaps_header": "🟥 Required Fillers", "no_gaps": "Perfectly filled!", "fill": "Filler", "col_layer": "👁️ Vis", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Status", "col_dim": "Dims", "col_area": "Area", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
+        "title": "🧱 Facade Generator v4.1", "search_header": "1. Search", "country": "Country", "zip": "ZIP", "radius": "Radius", "reuse": "🔄 Used", "new": "🆕 New", "search_btn": "🔍 Search", "custom_header": "2. Custom Inventory", "width": "Width", "height": "Height", "add_btn": "➕ Add", "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (AI)", "auto_rotate": "🔄 Auto-Rotation", "lock_pinned": "🔒 Lock pinned", "symmetry": "📐 Symmetry", "chaos": "Chaos", "opt_gaps_btn": "✂️ Toggle Fillers", "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate", "matrix_header": "📋 Window Control", "export_btn": "📥 Export CSV", "gaps_header": "🟥 Required Fillers", "no_gaps": "Perfectly filled!", "fill": "Filler", "col_layer": "👁️ Vis", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Status", "col_dim": "Dims", "col_area": "Area", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
     },
-    "🇫🇷 FR": {"title": "🧱 Générateur de Façade v4.0", "search_header": "Recherche", "country": "Pays", "zip": "CP", "radius": "Rayon", "reuse": "Usagé", "new": "Neuf", "search_btn": "Chercher", "custom_header": "Inventaire", "width": "Largeur", "height": "Hauteur", "add_btn": "Ajouter", "wall_header": "Ouverture", "shuffle_btn": "🎲 Mélanger", "auto_rotate": "🔄 Rotation", "lock_pinned": "🔒 Verrouiller", "symmetry": "📐 Symétrie", "chaos": "Chaos", "opt_gaps_btn": "✂️ Alterner", "price_total": "Prix Total", "win_area": "Surface Fen.", "wall_area": "Surface Mur", "fill_rate": "Remplissage", "matrix_header": "📋 Matrice", "export_btn": "📥 CSV", "gaps_header": "🟥 Panneaux", "no_gaps": "Parfait!", "fill": "Panneau", "col_layer": "👁️ Vis", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐", "col_type": "Type", "col_status": "Statut", "col_dim": "Dim", "col_area": "Surface", "col_source": "Source", "col_price": "Prix", "col_link": "Lien"},
+    "🇫🇷 FR": {"title": "🧱 Générateur de Façade", "search_header": "Recherche", "country": "Pays", "zip": "CP", "radius": "Rayon", "reuse": "Usagé", "new": "Neuf", "search_btn": "Chercher", "custom_header": "Inventaire", "width": "Largeur", "height": "Hauteur", "add_btn": "Ajouter", "wall_header": "Ouverture", "shuffle_btn": "🎲 Mélanger", "auto_rotate": "🔄 Rotation", "lock_pinned": "🔒 Verrouiller", "symmetry": "📐 Symétrie", "chaos": "Chaos", "opt_gaps_btn": "✂️ Alterner", "price_total": "Prix Total", "win_area": "Surface Fen.", "wall_area": "Surface Mur", "fill_rate": "Remplissage", "matrix_header": "📋 Matrice", "export_btn": "📥 CSV", "gaps_header": "🟥 Panneaux", "no_gaps": "Parfait!", "fill": "Panneau", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Type", "col_status": "Statut", "col_dim": "Dim", "col_area": "Surface", "col_source": "Source", "col_price": "Prix", "col_link": "Lien"},
     "🇮🇹 IT": {"title": "🧱 Generatore Facciate", "search_header": "Ricerca", "country": "Paese", "zip": "CAP", "radius": "Raggio", "reuse": "Usato", "new": "Nuovo", "search_btn": "Cerca", "custom_header": "Inventario", "width": "Largh.", "height": "Altezza", "add_btn": "Aggiungi", "wall_header": "Muro", "shuffle_btn": "🎲 Rimescola", "auto_rotate": "🔄 Rotazione", "lock_pinned": "🔒 Blocca", "symmetry": "📐 Simmetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Tagli", "price_total": "Prezzo", "win_area": "Area Fin.", "wall_area": "Area Muro", "fill_rate": "Riemp.", "matrix_header": "📋 Matrice", "export_btn": "📥 CSV", "gaps_header": "🟥 Pannelli", "no_gaps": "Perfetto!", "fill": "Pannello", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Tipo", "col_status": "Stato", "col_dim": "Dim", "col_area": "Area", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "Link"},
     "🇨🇭 RM": {"title": "🧱 Generatur Façadas", "search_header": "Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius", "reuse": "Duvrà", "new": "Nov", "search_btn": "Tschertgar", "custom_header": "Inventari", "width": "Ladezza", "height": "Autezza", "add_btn": "Agiuntar", "wall_header": "Paraid", "shuffle_btn": "🎲 Maschadar", "auto_rotate": "🔄 Rotaziun", "lock_pinned": "🔒 Fixar", "symmetry": "📐 Simetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Panels", "price_total": "Pretsch", "win_area": "Surfatscha", "wall_area": "Paraid", "fill_rate": "Emplenida", "matrix_header": "📋 Matrix", "export_btn": "📥 CSV", "gaps_header": "🟥 Panels", "no_gaps": "Perfegt!", "fill": "Panel", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Tip", "col_status": "Status", "col_dim": "Dim", "col_area": "Area", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "Link"},
     "🇧🇬 BG": {"title": "🧱 Генератор на фасади", "search_header": "Търсене", "country": "Държава", "zip": "ПК", "radius": "Радиус", "reuse": "Стари", "new": "Нови", "search_btn": "Търси", "custom_header": "Инвентар", "width": "Ширина", "height": "Височина", "add_btn": "Добави", "wall_header": "Стена", "shuffle_btn": "🎲 Разбъркай", "auto_rotate": "🔄 Ротация", "lock_pinned": "🔒 Заключи", "symmetry": "📐 Симетрия", "chaos": "Хаос", "opt_gaps_btn": "✂️ Панели", "price_total": "Цена", "win_area": "Площ Проз.", "wall_area": "Площ Стена", "fill_rate": "Запълване", "matrix_header": "📋 Матрица", "export_btn": "📥 CSV", "gaps_header": "🟥 Панели", "no_gaps": "Идеално!", "fill": "Панел", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Тип", "col_status": "Статус", "col_dim": "Разм", "col_area": "Площ", "col_source": "Източник", "col_price": "Цена", "col_link": "Линк"},
@@ -56,8 +60,9 @@ def sync_h_num(): st.session_state.h_val = st.session_state.h_num
 def shuffle_layout(): st.session_state['layout_seed'] = random.randint(1, 10000)
 def optimize_gaps(): st.session_state['gap_toggle'] = not st.session_state['gap_toggle']
 
-# --- OFFIZIELLE STREAMLIT KOMPONENTE FÜR DRAG & DROP ---
-# Dies erschafft eine echte Zwei-Wege-Verbindung, ohne dass Vercel oder React benötigt wird!
+# =====================================================================
+# --- OFFIZIELLE STREAMLIT KOMPONENTE FÜR DRAG & DROP (DER BUGFIX) ---
+# =====================================================================
 html_component_code = """
 <!DOCTYPE html>
 <html>
@@ -89,7 +94,6 @@ html_component_code = """
     let draggedEl = null; 
     let startX, startY, initialLeft, initialTop;
     
-    // Sendet Interaktionen direkt und sicher an Python zurück!
     function sendToPython(action, id, x, y) {
         Streamlit.setComponentValue({action: action, id: id, x: x, y: y, ts: Date.now()});
     }
@@ -107,7 +111,6 @@ html_component_code = """
         const fig = document.getElementById("figure");
         fig.style.width = Math.max(25, 400 * scale) + "px";
         fig.style.height = (1780 * scale) + "px";
-        // Die Architektur-Silhouette 1,78m
         const svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 280'><circle cx='50' cy='25' r='15' fill='%23333'/><path d='M 30 50 Q 50 40 70 50 L 85 130 L 70 130 L 65 70 L 60 130 L 65 260 L 45 260 L 50 140 L 45 140 L 40 260 L 20 260 L 25 130 L 20 70 L 15 130 Z' fill='%23333'/></svg>";
         fig.style.background = `url("${svg}") no-repeat bottom center/contain`;
 
@@ -141,11 +144,9 @@ html_component_code = """
             el.style.width = (w.w * scale) + 'px'; el.style.height = (w.h * scale) + 'px';
             el.style.left = (w.x * scale) + 'px'; el.style.top = (canvas_h - (w.y * scale) - (w.h * scale)) + 'px';
             
-            // Klick auf Rotieren
             el.querySelector('.rot-btn').addEventListener('click', (e) => {
                 e.stopPropagation(); sendToPython("rotate", w.id, 0, 0);
             });
-            // Klick auf Pinnen
             el.querySelector('.pin-btn').addEventListener('click', (e) => {
                 e.stopPropagation(); 
                 const mm_x = Math.round(parseInt(el.style.left) / scale);
@@ -156,7 +157,6 @@ html_component_code = """
             el.addEventListener('mousedown', dragStart);
             wall.appendChild(el);
         });
-        
         Streamlit.setFrameHeight();
     }
 
@@ -193,7 +193,6 @@ html_component_code = """
             const px_h = parseInt(draggedEl.style.height, 10);
             const mm_x = Math.round(px_x / scale);
             const mm_y = Math.round((canvas_h - px_y - px_h) / scale);
-            // Sende exakte Dropped-Koordinaten an Python!
             sendToPython("move", draggedEl.id, mm_x, mm_y);
             draggedEl = null;
         }
@@ -202,7 +201,16 @@ html_component_code = """
 </body>
 </html>
 """
-interactive_canvas = components.declare_component("interactive_canvas", html=html_component_code)
+
+# HIER IST DER FIX: Streamlit Custom Component Ordner generieren
+if not os.path.exists("canvas_component"):
+    os.makedirs("canvas_component")
+with open("canvas_component/index.html", "w", encoding="utf-8") as f:
+    f.write(html_component_code)
+    
+interactive_canvas = components.declare_component("interactive_canvas", path="canvas_component")
+# =====================================================================
+
 
 # --- FUNKTION: Daten suchen ---
 def harvest_materials(land, plz, radius, use_reuse, use_new):
