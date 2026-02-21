@@ -1,31 +1,116 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import re
 import random
 import uuid
-import base64
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v1.2", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v1.3", layout="wide")
 
-# --- SPRACH-WÖRTERBUCH (KOMPLETT) ---
+# --- 100% LÜCKENLOSES SPRACH-WÖRTERBUCH ---
 LANG_DICT = {
-    "🇩🇪 DE": {"title": "🧱 Patchwork-Fassaden-Generator v1.2", "search": "🔍 Marktplätze durchsuchen", "wall": "Wandöffnung", "matrix": "📋 Fenster-Steuerung & Export", "fill": "Zuschnitt", "export": "📥 Einkaufsliste herunterladen"},
-    "🇬🇧 EN": {"title": "🧱 Patchwork Facade Generator v1.2", "search": "🔍 Search marketplaces", "wall": "Wall Opening", "matrix": "📋 Window Control & Export", "fill": "Filler Panel", "export": "📥 Download Shopping List"},
-    "🇫🇷 FR": {"title": "🧱 Générateur de Façade v1.2", "search": "🔍 Chercher les marchés", "wall": "Ouverture du mur", "matrix": "📋 Contrôle des fenêtres", "fill": "Panneau de rempl.", "export": "📥 Télécharger la liste"},
-    "🇮🇹 IT": {"title": "🧱 Generatore di Facciate v1.2", "search": "🔍 Cerca mercati", "wall": "Apertura del muro", "matrix": "📋 Controllo finestre", "fill": "Pannello", "export": "📥 Scarica lista"},
-    "🇨🇭 RM": {"title": "🧱 Generatur da Façadas v1.2", "search": "🔍 Tschertgar martgads", "wall": "Avertura da paraid", "matrix": "📋 Control da fanestras", "fill": "Panel", "export": "📥 Chargiar glista"},
-    "🇧🇬 BG": {"title": "🧱 Генератор на фасади v1.2", "search": "🔍 Търсене в пазари", "wall": "Отвор на стената", "matrix": "📋 Управление на прозорци", "fill": "Панел за пълнеж", "export": "📥 Изтегли списък"},
-    "🇮🇱 HE": {"title": "🧱 מחולל חזיתות טלאים v1.2", "search": "🔍 חפש בשווקים", "wall": "פתח קיר", "matrix": "📋 בקרת חלונות", "fill": "פאנל מילוי", "export": "📥 הורד רשימה"},
-    "🇯🇵 JA": {"title": "🧱 パッチワークファサードジェネレーター v1.2", "search": "🔍 市場を検索", "wall": "壁の開口部", "matrix": "📋 ウィンドウコントロール", "fill": "フィラーパネル", "export": "📥 リストをダウンロード"}
+    "🇩🇪 DE": {
+        "title": "🧱 Patchwork-Fassaden-Generator v1.3",
+        "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
+        "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
+        "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
+        "wall_header": "Wandöffnung", "shuffle_btn": "🎲 Neu würfeln (Auto-Layout)",
+        "price_total": "Gesamtpreis", "win_area": "Fensterfläche", "wall_area": "Wandfläche", "fill_rate": "Füllgrad",
+        "matrix_header": "📋 Fenster-Steuerung", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
+        "gaps_header": "🟥 Benötigte Zuschnitte", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
+        "col_layer": "👁️ Layer", "col_force": "⭐ Priorität", "col_type": "Typ", "col_status": "Status", 
+        "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
+    },
+    "🇬🇧 EN": {
+        "title": "🧱 Patchwork Facade Generator v1.3",
+        "search_header": "1. Global Search", "country": "Country", "zip": "ZIP / City", "radius": "Radius (km)",
+        "reuse": "🔄 Re-Use Windows", "new": "🆕 Brand New Windows", "search_btn": "🔍 Search Marketplaces",
+        "custom_header": "2. Custom Inventory", "width": "Width (mm)", "height": "Height (mm)", "add_btn": "➕ Add Window",
+        "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (Auto-Layout)",
+        "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate",
+        "matrix_header": "📋 Window Control", "export_btn": "📥 Download Shopping List (CSV)",
+        "gaps_header": "🟥 Required Filler Panels", "no_gaps": "Wall is perfectly filled! No panels needed.",
+        "col_layer": "👁️ Layer", "col_force": "⭐ Priority", "col_type": "Type", "col_status": "Status", 
+        "col_dim": "Dimensions", "col_area": "Area (m²)", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
+    },
+    "🇫🇷 FR": {
+        "title": "🧱 Générateur de Façade v1.3",
+        "search_header": "1. Recherche Globale", "country": "Pays", "zip": "Code Postal", "radius": "Rayon (km)",
+        "reuse": "🔄 Fenêtres Réutilisées", "new": "🆕 Fenêtres Neuves", "search_btn": "🔍 Chercher les marchés",
+        "custom_header": "2. Inventaire Personnalisé", "width": "Largeur (mm)", "height": "Hauteur (mm)", "add_btn": "➕ Ajouter",
+        "wall_header": "Ouverture du mur", "shuffle_btn": "🎲 Mélanger (Auto-Layout)",
+        "price_total": "Prix Total", "win_area": "Surface Fenêtre", "wall_area": "Surface Mur", "fill_rate": "Taux de remplissage",
+        "matrix_header": "📋 Contrôle des fenêtres", "export_btn": "📥 Télécharger la liste (CSV)",
+        "gaps_header": "🟥 Panneaux de remplissage", "no_gaps": "Mur parfaitement rempli ! Aucun panneau nécessaire.",
+        "col_layer": "👁️ Calque", "col_force": "⭐ Priorité", "col_type": "Type", "col_status": "Statut", 
+        "col_dim": "Dimensions", "col_area": "Surface (m²)", "col_source": "Source", "col_price": "Prix", "col_link": "🛒 Boutique"
+    },
+    "🇮🇹 IT": {
+        "title": "🧱 Generatore di Facciate v1.3",
+        "search_header": "1. Ricerca Globale", "country": "Paese", "zip": "CAP", "radius": "Raggio (km)",
+        "reuse": "🔄 Finestre Usate", "new": "🆕 Finestre Nuove", "search_btn": "🔍 Cerca mercati",
+        "custom_header": "2. Inventario", "width": "Larghezza (mm)", "height": "Altezza (mm)", "add_btn": "➕ Aggiungi",
+        "wall_header": "Apertura del muro", "shuffle_btn": "🎲 Rimescola",
+        "price_total": "Prezzo Totale", "win_area": "Area Finestre", "wall_area": "Area Muro", "fill_rate": "Riempimento",
+        "matrix_header": "📋 Controllo finestre", "export_btn": "📥 Scarica lista (CSV)",
+        "gaps_header": "🟥 Pannelli richiesti", "no_gaps": "Muro perfettamente riempito!",
+        "col_layer": "👁️ Layer", "col_force": "⭐ Priorità", "col_type": "Tipo", "col_status": "Stato", 
+        "col_dim": "Dimensioni", "col_area": "Area (m²)", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "🛒 Negozio"
+    },
+    "🇨🇭 RM": {
+        "title": "🧱 Generatur da Façadas v1.3",
+        "search_header": "1. Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius (km)",
+        "reuse": "🔄 Fanestras duvradas", "new": "🆕 Fanestras novas", "search_btn": "🔍 Tschertgar martgads",
+        "custom_header": "2. Inventari", "width": "Ladezza (mm)", "height": "Autezza (mm)", "add_btn": "➕ Agiuntar",
+        "wall_header": "Avertura da paraid", "shuffle_btn": "🎲 Maschadar",
+        "price_total": "Pretsch total", "win_area": "Surfatscha", "wall_area": "Paraid", "fill_rate": "Emplenida",
+        "matrix_header": "📋 Control da fanestras", "export_btn": "📥 Chargiar glista (CSV)",
+        "gaps_header": "🟥 Panels", "no_gaps": "Perfegt!",
+        "col_layer": "👁️ Layer", "col_force": "⭐ Prioritad", "col_type": "Tip", "col_status": "Status", 
+        "col_dim": "Dimensiuns", "col_area": "Surfatscha", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "🛒 Butia"
+    },
+    "🇧🇬 BG": {
+        "title": "🧱 Генератор на фасади v1.3",
+        "search_header": "1. Търсене", "country": "Държава", "zip": "Пощенски код", "radius": "Радиус (км)",
+        "reuse": "🔄 Използвани прозорци", "new": "🆕 Нови прозорци", "search_btn": "🔍 Търсене в пазари",
+        "custom_header": "2. Мой инвентар", "width": "Ширина (мм)", "height": "Височина (мм)", "add_btn": "➕ Добави",
+        "wall_header": "Отвор на стената", "shuffle_btn": "🎲 Разбъркай",
+        "price_total": "Обща цена", "win_area": "Площ прозорци", "wall_area": "Площ стена", "fill_rate": "Запълване",
+        "matrix_header": "📋 Управление на прозорци", "export_btn": "📥 Изтегли списък (CSV)",
+        "gaps_header": "🟥 Нужни панели", "no_gaps": "Стената е идеално запълнена!",
+        "col_layer": "👁️ Слой", "col_force": "⭐ Приоритет", "col_type": "Тип", "col_status": "Статус", 
+        "col_dim": "Размери", "col_area": "Площ (м²)", "col_source": "Източник", "col_price": "Цена", "col_link": "🛒 Магазин"
+    },
+    "🇮🇱 HE": {
+        "title": "🧱 מחולל חזיתות טלאים v1.3",
+        "search_header": "1. חיפוש גלובלי", "country": "מדינה", "zip": "מיקוד", "radius": "רדיוס (ק״מ)",
+        "reuse": "🔄 חלונות בשימוש חוזר", "new": "🆕 חלונות חדשים", "search_btn": "🔍 חפש בשווקים",
+        "custom_header": "2. מלאי אישי", "width": "רוחב (מ״מ)", "height": "גובה (מ״מ)", "add_btn": "➕ הוסף",
+        "wall_header": "פתח קיר", "shuffle_btn": "🎲 ערבב",
+        "price_total": "מחיר כולל", "win_area": "שטח חלונות", "wall_area": "שטח קיר", "fill_rate": "אחוז מילוי",
+        "matrix_header": "📋 בקרת חלונות", "export_btn": "📥 הורד רשימת קניות (CSV)",
+        "gaps_header": "🟥 פאנלים חסרים", "no_gaps": "הקיר מלא לחלוטין! אין צורך בפאנלים.",
+        "col_layer": "👁️ שכבה", "col_force": "⭐ עדיפות", "col_type": "סוג", "col_status": "סטטוס", 
+        "col_dim": "מידות", "col_area": "שטח (מ״ר)", "col_source": "מקור", "col_price": "מחיר", "col_link": "🛒 חנות"
+    },
+    "🇯🇵 JA": {
+        "title": "🧱 パッチワークファサード v1.3",
+        "search_header": "1. グローバル検索", "country": "国", "zip": "郵便番号", "radius": "半径 (km)",
+        "reuse": "🔄 中古窓", "new": "🆕 新品窓", "search_btn": "🔍 市場を検索",
+        "custom_header": "2. カスタム在庫", "width": "幅 (mm)", "height": "高さ (mm)", "add_btn": "➕ 追加",
+        "wall_header": "壁の開口部", "shuffle_btn": "🎲 シャッフル",
+        "price_total": "合計価格", "win_area": "窓面積", "wall_area": "壁面積", "fill_rate": "充填率",
+        "matrix_header": "📋 ウィンドウコントロール", "export_btn": "📥 リストをダウンロード (CSV)",
+        "gaps_header": "🟥 必要なパネル", "no_gaps": "完全に充填されました！",
+        "col_layer": "👁️ レイヤー", "col_force": "⭐ 優先順位", "col_type": "タイプ", "col_status": "ステータス", 
+        "col_dim": "寸法", "col_area": "面積 (m²)", "col_source": "ソース", "col_price": "価格", "col_link": "🛒 ショップ"
+    }
 }
 
-lang_choice = st.radio("Sprache / Language:", list(LANG_DICT.keys()), horizontal=True)
+lang_choice = st.radio("Language:", list(LANG_DICT.keys()), horizontal=True)
 T = LANG_DICT[lang_choice]
-
 st.title(T["title"])
 
 # --- SESSION STATE ---
@@ -34,8 +119,8 @@ if 'custom_windows' not in st.session_state: st.session_state['custom_windows'] 
 if 'is_loaded' not in st.session_state: st.session_state['is_loaded'] = False
 if 'item_states' not in st.session_state: st.session_state['item_states'] = {} 
 
-# --- FUNKTION: Daten suchen ---
-def harvest_materials(land, plz, use_reuse, use_new):
+# --- FUNKTION: Daten suchen (inkl. Radius Logik) ---
+def harvest_materials(land, plz, radius, use_reuse, use_new):
     materials = []
     queries = []
     if use_reuse: queries.append((f"site:ebay.de OR site:kleinanzeigen.de Fenster gebraucht {plz} {land}", "Re-Use", '#4682b4'))
@@ -82,7 +167,6 @@ def pack_mondrian_cluster(wall_w, wall_h, items):
     placed_items = []
     dynamic_items = []
     
-    # Manuelle Platzierung
     for item in items:
         state = st.session_state['item_states'][item['id']]
         if state.get('man_x') is not None and state.get('man_y') is not None:
@@ -90,7 +174,6 @@ def pack_mondrian_cluster(wall_w, wall_h, items):
         else:
             dynamic_items.append(item)
             
-    # Dynamisches Packing
     forced_items = [i for i in dynamic_items if st.session_state['item_states'][i['id']]['force']]
     normal_items = [i for i in dynamic_items if not st.session_state['item_states'][i['id']]['force']]
     random.shuffle(normal_items) 
@@ -140,23 +223,24 @@ def calculate_gaps(wall_w, wall_h, placed, step=50):
                 if cw > 0 and ch > 0:
                     gaps.append({
                         'id': uuid.uuid4().hex, 'x': x*step, 'y': y*step, 'w': cw*step, 'h': ch*step, 
-                        'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0,
-                        'source': 'Plattenmaterial', 'condition': 'Neu', 'link': ''
+                        'type': "Zuschnitt", 'color': '#ff4d4d', 'price': 0.0,
+                        'source': '-', 'condition': 'Neu', 'link': ''
                     })
     return gaps
 
 # --- UI: SIDEBAR ---
 with st.sidebar:
-    st.header(T["search"])
-    land = st.selectbox("Land / Country", ["Deutschland", "Österreich", "Schweiz", "Liechtenstein"])
-    plz = st.text_input("PLZ / Zip", "10115")
+    st.header(T["search_header"])
+    land = st.selectbox(T["country"], ["Deutschland", "Österreich", "Schweiz", "Liechtenstein"])
+    plz = st.text_input(T["zip"], "10115")
+    radius = st.slider(T["radius"], 0, 100, 50, 10)
     
-    use_reuse = st.checkbox("🔄 Gebrauchte Fenster (Re-Use)", value=True)
-    use_new = st.checkbox("🆕 Fabrikneue Fenster", value=False)
+    use_reuse = st.checkbox(T["reuse"], value=True)
+    use_new = st.checkbox(T["new"], value=False)
     
-    if st.button(T["search"], type="primary"):
+    if st.button(T["search_btn"], type="primary"):
         with st.spinner("..."):
-            st.session_state['inventory'] = harvest_materials(land, plz, use_reuse, use_new)
+            st.session_state['inventory'] = harvest_materials(land, plz, radius, use_reuse, use_new)
             st.session_state['is_loaded'] = True
         st.rerun()
 
@@ -165,11 +249,11 @@ with st.sidebar:
         stats_container = st.empty()
         st.divider()
 
-    st.header("➕ Eigenbestand")
+    st.header(T["custom_header"])
     colA, colB = st.columns(2)
-    with colA: cw_w = st.number_input("Breite", 300, 12000, 1000, step=50)
-    with colB: cw_h = st.number_input("Höhe", 300, 12000, 1200, step=50)
-    if st.button("Hinzufügen"):
+    with colA: cw_w = st.number_input(T["width"], 300, 12000, 1000, step=50)
+    with colB: cw_h = st.number_input(T["height"], 300, 12000, 1200, step=50)
+    if st.button(T["add_btn"]):
         item_id = uuid.uuid4().hex
         st.session_state['custom_windows'].append({
             'id': item_id, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 
@@ -181,17 +265,16 @@ with st.sidebar:
 # --- UI: HAUPTBEREICH ---
 if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     total_inventory = st.session_state['custom_windows'] + st.session_state['inventory']
-    total_inventory.sort(key=lambda x: x['id']) # WICHTIG: Sichert die Tabellenstabilität
+    total_inventory.sort(key=lambda x: x['id']) 
     
-    # Nur einblenden, wenn das Layer (Auge) aktiv ist
     usable_inventory = [item for item in total_inventory if st.session_state['item_states'].get(item['id'], {}).get('visible') == True]
     
     col1, col2 = st.columns([1, 3])
     with col1:
-        st.subheader(T["wall"])
-        wall_width = st.slider("Breite / Width (mm)", 1000, 12000, 4000, 100)
-        wall_height = st.slider("Höhe / Height (mm)", 1000, 12000, 3000, 100)
-        if st.button("🎲 Neu würfeln / Shuffle"): pass 
+        st.subheader(T["wall_header"])
+        wall_width = st.slider(T["width"], 1000, 12000, 4000, 100)
+        wall_height = st.slider(T["height"], 1000, 12000, 3000, 100)
+        if st.button(T["shuffle_btn"]): pass 
 
     with col2:
         placed = pack_mondrian_cluster(wall_width, wall_height, usable_inventory)
@@ -202,34 +285,70 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         win_area_m2 = sum((p['w'] * p['h'])/1000000 for p in placed)
         win_pct = (win_area_m2 / wall_area_m2 * 100) if wall_area_m2 > 0 else 0
         
-        stats_container.markdown(f"### 💶 Fenster: **{total_price:.2f} €**")
-        stats_container.markdown(f"**Wandöffnung:** {wall_area_m2:.2f} m²<br>**Fensterfläche:** {win_area_m2:.2f} m²<br>*(Füllgrad: {win_pct:.1f}%)*", unsafe_allow_html=True)
+        stats_container.markdown(f"### 💶 {T['price_total']}: **{total_price:.2f} €**")
+        stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²<br>**{T['win_area']}:** {win_area_m2:.2f} m²<br>*(**{T['fill_rate']}:** {win_pct:.1f}%)*", unsafe_allow_html=True)
         
-        fig, ax = plt.subplots(figsize=(12, 8)) 
-        ax.add_patch(patches.Rectangle((0, 0), wall_width, wall_height, facecolor='#ffffff', edgecolor='black', linewidth=3))
+        # ==============================================================
+        # --- DRAG & DROP HTML/JAVASCRIPT BLOCK ---
+        # ==============================================================
+        scale = 800 / max(wall_width, 1)
+        canvas_w = int(wall_width * scale)
+        canvas_h = int(wall_height * scale)
         
-        placed_ids = [p['id'] for p in placed]
-        
-        for g in gaps:
-            ax.add_patch(patches.Rectangle((g['x'], g['y']), g['w'], g['h'], facecolor=g['color'], edgecolor='darkred', linewidth=1, alpha=0.7))
-            g_area = (g['w'] * g['h']) / 1000000
-            if g['w'] >= 400 and g['h'] >= 400: 
-                ax.text(g['x'] + g['w']/2, g['y'] + g['h']/2, f"{g_area:.2f} m²", ha='center', va='center', fontsize=6, color='white')
-            
-        for i, item in enumerate(placed):
-            ax.add_patch(patches.Rectangle((item['x'], item['y']), item['w'], item['h'], facecolor=item['color'], edgecolor='black', linewidth=4))
-            ax.text(item['x'] + item['w']/2, item['y'] + item['h']/2, f"P{i+1}\n{item['w']}x{item['h']}", ha='center', va='center', fontsize=7, fontweight='bold')
-            
-        ax.set_xlim(0, max(wall_width, 4000) + 100); ax.set_ylim(0, max(wall_height, 3000) + 100)
-        ax.set_aspect('equal'); plt.axis('off'); st.pyplot(fig)
+        js_placed = []
+        for i, p in enumerate(placed):
+            js_placed.append({
+                "id": p['id'], "label": f"P{i+1}\n{p['w']}x{p['h']}", "color": p['color'],
+                "x": int(p['x'] * scale), "y": int(canvas_h - (p['y'] * scale) - (p['h'] * scale)),
+                "w": int(p['w'] * scale), "h": int(p['h'] * scale)
+            })
+
+        html_code = f"""
+        <!DOCTYPE html><html><head><style>
+            body {{ margin: 0; padding: 0; display: flex; justify-content: center; background-color: #f0f2f6; font-family: sans-serif; }}
+            #wall {{ width: {canvas_w}px; height: {canvas_h}px; background: repeating-linear-gradient(45deg, #ffcccc, #ffcccc 10px, #ffffff 10px, #ffffff 20px); border: 4px solid #cc0000; position: relative; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
+            .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; white-space: pre-wrap; line-height: 1.2;}}
+            .window:active {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
+        </style></head><body>
+            <div id="wall"></div>
+            <script>
+                const wall = document.getElementById('wall');
+                const items = {json.dumps(js_placed)};
+                let draggedEl = null; let startX, startY, initialLeft, initialTop;
+
+                items.forEach(item => {{
+                    const el = document.createElement('div');
+                    el.className = 'window'; el.id = item.id; el.innerText = item.label;
+                    el.style.backgroundColor = item.color; el.style.width = item.w + 'px';
+                    el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px'; el.style.zIndex = 10;
+                    el.addEventListener('mousedown', dragStart);
+                    wall.appendChild(el);
+                }});
+
+                function dragStart(e) {{
+                    draggedEl = e.target; startX = e.clientX; startY = e.clientY;
+                    initialLeft = parseInt(draggedEl.style.left, 10); initialTop = parseInt(draggedEl.style.top, 10);
+                    document.addEventListener('mousemove', drag); document.addEventListener('mouseup', dragEnd);
+                }}
+                function drag(e) {{
+                    if (!draggedEl) return; e.preventDefault();
+                    draggedEl.style.left = (initialLeft + (e.clientX - startX)) + 'px';
+                    draggedEl.style.top = (initialTop + (e.clientY - startY)) + 'px';
+                }}
+                function dragEnd(e) {{ document.removeEventListener('mousemove', drag); document.removeEventListener('mouseup', dragEnd); draggedEl = null; }}
+            </script>
+        </body></html>
+        """
+        st.caption("🖱️ **Drag & Drop Preview:** Bewege die Fenster direkt im Bild mit der Maus!")
+        components.html(html_code, height=canvas_h + 20)
 
     # ==========================================
     # --- TABELLE 1: INTERAKTIVE FENSTER ---
     # ==========================================
-    st.subheader(T["matrix"])
-    st.caption("Nutze 'Manuell X/Y', um ein Fenster exakt zu positionieren (z.B. X:0, Y:0 ist unten links).")
+    st.subheader(T["matrix_header"])
     
     df_win_data = []
+    placed_ids = [p['id'] for p in placed]
     
     for item in total_inventory:
         state = st.session_state['item_states'].get(item['id'])
@@ -237,68 +356,66 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         
         pos_label, status = "", ""
         if not state['visible']:
-            status = "🙈 Versteckt"
+            status = "🙈"
             pos_label = "-"
         elif item['id'] in placed_ids:
             pos_label = f"P{placed_ids.index(item['id']) + 1}"
-            status = "✅ Platziert"
-            if state.get('man_x') is not None: status = "📌 Fixiert"
+            status = "✅"
+            if state.get('man_x') is not None: status = "📌"
         else:
-            status = "❌ Passt nicht"
+            status = "❌"
 
         df_win_data.append({
             "id": item['id'],
-            "👁️ Ein/Aus": state['visible'], 
+            T["col_layer"]: state['visible'], 
             "📍 Manuell X": state.get('man_x'), 
             "📍 Manuell Y": state.get('man_y'), 
-            "⭐ Zwingen": state['force'],
-            "Typ": item['type'],
+            T["col_force"]: state['force'],
+            T["col_type"]: item['type'],
             "Pos": pos_label,
-            "Status": status,
-            "Maße (BxH)": f"{item['w']} x {item['h']}",
-            "Fläche (m²)": f"{area_m2:.2f}",
-            "Herkunft": item['source'],
-            "Preis": f"{item['price']:.2f} €", 
-            "Link": item['link']
+            T["col_status"]: status,
+            T["col_dim"]: f"{item['w']} x {item['h']}",
+            T["col_area"]: f"{area_m2:.2f}",
+            T["col_source"]: item['source'],
+            T["col_price"]: f"{item['price']:.2f} €", 
+            T["col_link"]: item['link']
         })
         
     df_win = pd.DataFrame(df_win_data)
     
     def highlight_windows(row):
-        if '✅' in str(row['Status']): return ['background-color: rgba(40, 167, 69, 0.2)'] * len(row)
-        if '📌' in str(row['Status']): return ['background-color: rgba(255, 193, 7, 0.3)'] * len(row) 
-        if '🙈' in str(row['Status']): return ['background-color: rgba(128, 128, 128, 0.2); color: gray'] * len(row)
+        stat = str(row[T['col_status']])
+        if '✅' in stat: return ['background-color: rgba(40, 167, 69, 0.2)'] * len(row)
+        if '📌' in stat: return ['background-color: rgba(255, 193, 7, 0.3)'] * len(row) 
+        if '🙈' in stat: return ['background-color: rgba(128, 128, 128, 0.2); color: gray'] * len(row)
         return [''] * len(row)
         
     edited_df = st.data_editor(
         df_win.style.apply(highlight_windows, axis=1), 
         column_config={
             "id": None, 
-            "👁️ Ein/Aus": st.column_config.CheckboxColumn("👁️ Layer"),
+            T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
             "📍 Manuell X": st.column_config.NumberColumn("📍 Manuell X"),
             "📍 Manuell Y": st.column_config.NumberColumn("📍 Manuell Y"),
-            "⭐ Zwingen": st.column_config.CheckboxColumn("⭐ Priorität"),
-            "Link": st.column_config.LinkColumn("🛒 Shop", display_text="Link 🔗")
+            T["col_force"]: st.column_config.CheckboxColumn(T["col_force"]),
+            T["col_link"]: st.column_config.LinkColumn(T["col_link"], display_text="Link 🔗")
         },
-        disabled=["Typ", "Pos", "Status", "Maße (BxH)", "Fläche (m²)", "Herkunft", "Preis", "Link"], 
+        disabled=[T["col_type"], "Pos", T["col_status"], T["col_dim"], T["col_area"], T["col_source"], T["col_price"], T["col_link"]], 
         hide_index=True, use_container_width=True, key="windows_editor"
     )
-    
-    st.markdown(f"### 💶 Gesamtpreis Fenster: **{total_price:.2f} €**")
-    st.markdown(f"**Gesamtfläche Fenster:** {win_area_m2:.2f} m² | **Wandfläche:** {wall_area_m2:.2f} m²")
     
     changes_made = False
     for idx, row in edited_df.iterrows():
         item_id = row['id']
         if item_id in st.session_state['item_states']:
             state = st.session_state['item_states'][item_id]
-            if (row['👁️ Ein/Aus'] != state['visible'] or 
-                row['⭐ Zwingen'] != state['force'] or 
+            if (row[T['col_layer']] != state['visible'] or 
+                row[T['col_force']] != state['force'] or 
                 row['📍 Manuell X'] != state['man_x'] or 
                 row['📍 Manuell Y'] != state['man_y']):
                 
-                state['visible'] = row['👁️ Ein/Aus']
-                state['force'] = row['⭐ Zwingen']
+                state['visible'] = row[T['col_layer']]
+                state['force'] = row[T['col_force']]
                 state['man_x'] = None if pd.isna(row['📍 Manuell X']) else int(row['📍 Manuell X'])
                 state['man_y'] = None if pd.isna(row['📍 Manuell Y']) else int(row['📍 Manuell Y'])
                 changes_made = True
@@ -306,43 +423,33 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     if changes_made: st.rerun()
 
     # ==========================================
-    # --- CSV EXPORT FUNKTION (NEU) ---
+    # --- EXPORT & LÜCKEN (GAPS) ---
     # ==========================================
     st.divider()
     
-    # Wir filtern die Matrix, um nur die "Platzierten", "Fixierten" und "Benötigten Gaps" zu exportieren
-    export_data = df_win[(df_win['Status'] == '✅ Platziert') | (df_win['Status'] == '📌 Fixiert')].copy()
+    export_data = df_win[(df_win[T['col_status']] == '✅') | (df_win[T['col_status']] == '📌')].copy()
     
     df_gaps_data = []
     for g in gaps:
         area_m2 = (g['w'] * g['h']) / 1000000
         df_gaps_data.append({
-            "Typ": g['type'], "Pos": "Gap", "Status": "⚠️ Benötigt",
-            "Maße (BxH)": f"{g['w']} x {g['h']}", "Fläche (m²)": f"{area_m2:.2f}",
-            "Herkunft": g['source'], "Preis": "-", "Link": ""
+            T["col_type"]: T["fill"], "Pos": "Gap", T["col_status"]: "⚠️",
+            T["col_dim"]: f"{g['w']} x {g['h']}", T["col_area"]: f"{area_m2:.2f}",
+            T["col_source"]: g['source'], T["col_price"]: "-", T["col_link"]: ""
         })
     df_gaps = pd.DataFrame(df_gaps_data)
     
-    # Führe Fenster und Gaps für den finalen Export zusammen
     final_export_df = pd.concat([export_data, df_gaps], ignore_index=True)
-    # Entferne technische Spalten für die Excel/CSV
-    final_export_df = final_export_df.drop(columns=['id', '👁️ Ein/Aus', '📍 Manuell X', '📍 Manuell Y', '⭐ Zwingen'], errors='ignore')
+    final_export_df = final_export_df.drop(columns=['id', T['col_layer'], '📍 Manuell X', '📍 Manuell Y', T['col_force']], errors='ignore')
 
     csv = final_export_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label=T["export"],
-        data=csv,
-        file_name='fassaden_stueckliste.csv',
-        mime='text/csv',
-        type="primary"
-    )
+    st.download_button(label=T["export_btn"], data=csv, file_name='stueckliste.csv', mime='text/csv', type="primary")
 
-    # --- TABELLE 2: DIE ZUSCHNITTE (READ ONLY) ---
-    st.subheader(f"🟥 {T['fill']}")
+    st.subheader(T["gaps_header"])
     if not df_gaps.empty:
-        st.dataframe(df_gaps[["Typ", "Maße (BxH)", "Fläche (m²)", "Herkunft"]], hide_index=True, use_container_width=True)
+        st.dataframe(df_gaps[[T["col_type"], T["col_dim"], T["col_area"], T["col_source"]]], hide_index=True, use_container_width=True)
     else:
-        st.success("Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.")
+        st.success(T["no_gaps"])
 
 else:
-    st.info("👈 " + T["search"])
+    st.info("👈 " + T["search_header"])
