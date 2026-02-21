@@ -8,12 +8,12 @@ import uuid
 import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v2.7", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v2.7.1", layout="wide")
 
 # --- SPRACH-WÖRTERBUCH (Komplett inkl. Spanisch) ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v2.7",
+        "title": "🧱 Patchwork-Fassaden-Generator v2.7.1",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
@@ -28,7 +28,7 @@ LANG_DICT = {
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
     },
     "🇪🇸 ES": {
-        "title": "🧱 Generador de Fachadas v2.7",
+        "title": "🧱 Generador de Fachadas v2.7.1",
         "search_header": "1. Búsqueda Global", "country": "País", "zip": "C.P. / Ciudad", "radius": "Radio (km)",
         "reuse": "🔄 Ventanas Usadas", "new": "🆕 Ventanas Nuevas", "search_btn": "🔍 Buscar en mercados",
         "custom_header": "2. Inventario Propio", "width": "Ancho (mm)", "height": "Alto (mm)", "add_btn": "➕ Añadir",
@@ -43,7 +43,6 @@ LANG_DICT = {
         "col_dim": "Dimensiones", "col_area": "Área (m²)", "col_source": "Origen", "col_price": "Precio", "col_link": "🛒 Tienda"
     }
 }
-# Fallback für die anderen Sprachen, hier der Übersichtlichkeit halber abgekürzt, wir laden das DE/ES dict.
 lang_choice = st.radio("Sprache / Idioma:", ["🇩🇪 DE", "🇪🇸 ES"], horizontal=True)
 T = LANG_DICT[lang_choice]
 st.title(T["title"])
@@ -127,7 +126,6 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
     dynamic_items = [i for i in items if not st.session_state['item_states'][i['id']].get('pinned')]
     fixed_x, fixed_y = [], []
     
-    # 1. Gepinnte Elemente setzen (mit Bounds & KI Overlap Check)
     for item in pinned_items:
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
@@ -175,7 +173,6 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
     
     step = 200 if wall_w > 15000 or wall_h > 15000 else 100
     
-    # 2. Dynamische Elemente platzieren
     for item in pack_list: 
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
@@ -222,7 +219,6 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
             
     return placed_items
 
-# ALGORITHMUS: Exakter Sweep-Line Zuschnitt (Ohne Lücken, ohne Überlappung)
 def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
     x_coords = {0, wall_w}
     y_coords = {0, wall_h}
@@ -282,7 +278,6 @@ with st.sidebar:
 
     st.divider()
     if st.session_state['is_loaded']:
-        # KOMPAKTE STATS IN DER SIDEBAR (Preis ist da!)
         st.header("📊 Info")
         stats_container = st.empty()
         st.divider()
@@ -336,7 +331,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         placed = pack_smart_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate, symmetry=symmetry, randomness=chaos_val, seed=st.session_state['layout_seed'], lock_pinned=lock_pinned)
         gaps = calculate_gaps_exact(wall_width, wall_height, placed, toggle_dir=st.session_state['gap_toggle'])
         
-        # --- GROSSES DASHBOARD (GESAMTPREIS & FLÄCHEN) ---
+        # --- GROSSES DASHBOARD ---
         total_price = sum(p['price'] for p in placed)
         wall_area_m2 = (wall_width * wall_height) / 1000000
         win_area_m2 = sum((p['w'] * p['h'])/1000000 for p in placed)
@@ -349,19 +344,19 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         m_col3.metric(T["fill_rate"], f"{win_pct:.1f} %")
         m_col4.metric(T["price_total"], f"{total_price:.2f} €")
         
-        # Sidebar Stats parallel updaten
         stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²\n\n**{T['win_area']}:** {win_area_m2:.2f} m²\n\n**{T['fill_rate']}:** {win_pct:.1f}%\n\n### 💶 {T['price_total']}:\n## **{total_price:.2f} €**")
         
-        # --- DRAG & DROP HTML Rendering mit Scale Figure & Window Icons ---
+        # --- HTML RENDERING ---
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
-        figure_h_px = int(1780 * scale) # 1.78m Architektur-Figur
+        figure_h_px = int(1780 * scale)
 
         js_placed = []
         for p in placed:
+            # Ersetzt die \n durch HTML <br> tags um SyntaxError zu vermeiden!
             js_placed.append({
-                "id": p['id'], "label": f"{p['pos_label']}\n{p['w']}x{p['h']}", "color": p['color'],
+                "id": p['id'], "label": f"{p['pos_label']}<br>{p['w']}x{p['h']}", "color": p['color'],
                 "x": int(p['x'] * scale), "y": int(canvas_h - (p['y'] * scale) - (p['h'] * scale)),
                 "w": int(p['w'] * scale), "h": int(p['h'] * scale),
                 "is_pinned": p.get('is_pinned', False)
@@ -375,9 +370,9 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 "w": int(g['w'] * scale), "h": int(g['h'] * scale)
             })
 
-        # SVG einer klassischen architektonischen Menschen-Silhouette
         arch_silhouette_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 250'><circle cx='50' cy='20' r='14' fill='%23333'/><path d='M30 45 Q50 35 70 45 L80 110 L65 110 L60 70 L55 120 L60 240 L40 240 L45 140 L40 140 L45 240 L25 240 L35 120 L25 70 L20 110 L5 110 Z' fill='%23333'/></svg>"
 
+        # Javascript-Sichere Generierung der HTML-Elemente durch String-Konkatenation (+)
         html_code = f"""
         <!DOCTYPE html><html><head><style>
             body {{ margin: 0; padding: 0; background-color: #f0f2f6; font-family: sans-serif; }}
@@ -415,14 +410,13 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                     if (item.is_pinned) el.classList.add('pinned');
                     el.id = item.id; 
                     
-                    // ICONS & LABEL RENDER
-                    el.innerHTML = `
-                        <div class="win-icons">
-                            <div class="win-btn rot-btn" title="Lokal Rotieren">🔄</div>
-                            <div class="win-btn pin-btn" title="Lokal Anpinnen">📌</div>
-                        </div>
-                        <div style="margin-top:12px;">${item.label.replace(/\\n/g, '<br>')}</div>
-                    `;
+                    // Sichere HTML-Konstruktion ohne Template Literals, die Python verwirren
+                    el.innerHTML = '<div class="win-icons">' +
+                                   '<div class="win-btn rot-btn" title="Rotieren (Vorschau)">🔄</div>' +
+                                   '<div class="win-btn pin-btn" title="Anpinnen (Vorschau)">📌</div>' +
+                                   '</div>' +
+                                   '<div style="margin-top:12px;">' + item.label + '</div>';
+                                   
                     el.style.backgroundColor = item.color; el.style.width = item.w + 'px'; el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
                     
                     // Interaktive Klicks im Canvas
@@ -456,7 +450,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             </script>
         </body></html>
         """
-        st.caption("ℹ️ **Info Icons:** Die Klicks auf 📌 und 🔄 *im Bild* ändern nur die Vorschau. Um ein Fenster für die KI-Berechnung dauerhaft zu speichern, setze den Haken in der Matrix unten!")
+        st.caption("ℹ️ **Info:** Die Icons (📌/🔄) *im Bild* ändern nur die Vorschau für Screenshots. Um ein Fenster für die KI-Berechnung dauerhaft zu pinnen, nutze `📌 Pin` in der Tabelle unten!")
         components.html(html_code, height=canvas_h + 50)
 
     # ==========================================
@@ -505,7 +499,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         df_win.style.apply(highlight_windows, axis=1), 
         column_config={
             "_color": None, T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
-            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Sperrt die Position für den KI Algorithmus."),
+            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"]),
             "📍 Man X": st.column_config.NumberColumn("📍 Man X"),
             "📍 Man Y": st.column_config.NumberColumn("📍 Man Y"), T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
             T["col_force"]: st.column_config.CheckboxColumn(T["col_force"])
@@ -521,11 +515,10 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             new_vis = bool(row[T['col_layer']]); new_rot = bool(row[T['col_rotate']]); new_fce = bool(row[T['col_force']]); new_pin = bool(row[T['col_pin']])
             new_mx = None if pd.isna(row['📍 Man X']) else int(row['📍 Man X']); new_my = None if pd.isna(row['📍 Man Y']) else int(row['📍 Man Y'])
             
-            # PIN LOGIK (Setzt die ECHTE Position aus dem Algorithmus ein, nicht 0,0!)
             if new_pin != state.get('pinned', False):
                 state['pinned'] = new_pin
                 if new_pin: 
-                    # Hole die aktuelle Position aus der Grafik
+                    # Setzt beim Pinnen die AKTUELL GERECHNETE Position ein (nicht mehr 0,0!)
                     curr_x = placed_dict[item_id]['x'] if item_id in placed_dict else 0
                     curr_y = placed_dict[item_id]['y'] if item_id in placed_dict else 0
                     state['man_x'] = curr_x
