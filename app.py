@@ -8,12 +8,12 @@ import uuid
 import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v1.3.2", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v1.4", layout="wide")
 
-# --- 100% LÜCKENLOSES SPRACH-WÖRTERBUCH (FIXED) ---
+# --- SPRACH-WÖRTERBUCH ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v1.3.2",
+        "title": "🧱 Patchwork-Fassaden-Generator v1.4",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
@@ -21,12 +21,12 @@ LANG_DICT = {
         "price_total": "Gesamtpreis", "win_area": "Fensterfläche", "wall_area": "Wandfläche", "fill_rate": "Füllgrad",
         "matrix_header": "📋 Fenster-Steuerung", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
         "gaps_header": "🟥 Benötigte Zuschnitte", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
-        "fill": "Zuschnitt", # <-- HIER WAR DER FEHLER (Gefehlt)
+        "fill": "Zuschnitt",
         "col_layer": "👁️ Layer", "col_force": "⭐ Priorität", "col_type": "Typ", "col_status": "Status", 
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
     },
     "🇬🇧 EN": {
-        "title": "🧱 Patchwork Facade Generator v1.3.2",
+        "title": "🧱 Patchwork Facade Generator v1.4",
         "search_header": "1. Global Search", "country": "Country", "zip": "ZIP / City", "radius": "Radius (km)",
         "reuse": "🔄 Re-Use Windows", "new": "🆕 Brand New Windows", "search_btn": "🔍 Search Marketplaces",
         "custom_header": "2. Custom Inventory", "width": "Width (mm)", "height": "Height (mm)", "add_btn": "➕ Add Window",
@@ -39,7 +39,7 @@ LANG_DICT = {
         "col_dim": "Dimensions", "col_area": "Area (m²)", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
     },
     "🇫🇷 FR": {
-        "title": "🧱 Générateur de Façade v1.3.2",
+        "title": "🧱 Générateur de Façade v1.4",
         "search_header": "1. Recherche Globale", "country": "Pays", "zip": "Code Postal", "radius": "Rayon (km)",
         "reuse": "🔄 Fenêtres Réutilisées", "new": "🆕 Fenêtres Neuves", "search_btn": "🔍 Chercher les marchés",
         "custom_header": "2. Inventaire Personnalisé", "width": "Largeur (mm)", "height": "Hauteur (mm)", "add_btn": "➕ Ajouter",
@@ -52,7 +52,7 @@ LANG_DICT = {
         "col_dim": "Dimensions", "col_area": "Surface (m²)", "col_source": "Source", "col_price": "Prix", "col_link": "🛒 Boutique"
     },
     "🇮🇹 IT": {
-        "title": "🧱 Generatore di Facciate v1.3.2",
+        "title": "🧱 Generatore di Facciate v1.4",
         "search_header": "1. Ricerca Globale", "country": "Paese", "zip": "CAP", "radius": "Raggio (km)",
         "reuse": "🔄 Finestre Usate", "new": "🆕 Finestre Nuove", "search_btn": "🔍 Cerca mercati",
         "custom_header": "2. Inventario", "width": "Larghezza (mm)", "height": "Altezza (mm)", "add_btn": "➕ Aggiungi",
@@ -65,7 +65,7 @@ LANG_DICT = {
         "col_dim": "Dimensioni", "col_area": "Area (m²)", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "🛒 Negozio"
     },
     "🇨🇭 RM": {
-        "title": "🧱 Generatur da Façadas v1.3.2",
+        "title": "🧱 Generatur da Façadas v1.4",
         "search_header": "1. Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius (km)",
         "reuse": "🔄 Fanestras duvradas", "new": "🆕 Fanestras novas", "search_btn": "🔍 Tschertgar martgads",
         "custom_header": "2. Inventari", "width": "Ladezza (mm)", "height": "Autezza (mm)", "add_btn": "➕ Agiuntar",
@@ -78,7 +78,7 @@ LANG_DICT = {
         "col_dim": "Dimensiuns", "col_area": "Surfatscha", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "🛒 Butia"
     },
     "🇧🇬 BG": {
-        "title": "🧱 Генератор на фасади v1.3.2",
+        "title": "🧱 Генератор на фасади v1.4",
         "search_header": "1. Търсене", "country": "Държава", "zip": "Пощенски код", "radius": "Радиус (км)",
         "reuse": "🔄 Използвани прозорци", "new": "🆕 Нови прозорци", "search_btn": "🔍 Търсене в пазари",
         "custom_header": "2. Мой инвентар", "width": "Ширина (мм)", "height": "Височина (мм)", "add_btn": "➕ Добави",
@@ -91,7 +91,7 @@ LANG_DICT = {
         "col_dim": "Размери", "col_area": "Площ (м²)", "col_source": "Източник", "col_price": "Цена", "col_link": "🛒 Магазин"
     },
     "🇮🇱 HE": {
-        "title": "🧱 מחולל חזיתות טלאים v1.3.2",
+        "title": "🧱 מחולל חזיתות טלאים v1.4",
         "search_header": "1. חיפוש גלובלי", "country": "מדינה", "zip": "מיקוד", "radius": "רדיוס (ק״מ)",
         "reuse": "🔄 חלונות בשימוש חוזר", "new": "🆕 חלונות חדשים", "search_btn": "🔍 חפש בשווקים",
         "custom_header": "2. מלאי אישי", "width": "רוחב (מ״מ)", "height": "גובה (מ״מ)", "add_btn": "➕ הוסף",
@@ -104,7 +104,7 @@ LANG_DICT = {
         "col_dim": "מידות", "col_area": "שטח (מ״ר)", "col_source": "מקור", "col_price": "מחיר", "col_link": "🛒 חנות"
     },
     "🇯🇵 JA": {
-        "title": "🧱 パッチワークファサード v1.3.2",
+        "title": "🧱 パッチワークファサード v1.4",
         "search_header": "1. グローバル検索", "country": "国", "zip": "郵便番号", "radius": "半径 (km)",
         "reuse": "🔄 中古窓", "new": "🆕 新品窓", "search_btn": "🔍 市場を検索",
         "custom_header": "2. カスタム在庫", "width": "幅 (mm)", "height": "高さ (mm)", "add_btn": "➕ 追加",
@@ -128,12 +128,12 @@ if 'custom_windows' not in st.session_state: st.session_state['custom_windows'] 
 if 'is_loaded' not in st.session_state: st.session_state['is_loaded'] = False
 if 'item_states' not in st.session_state: st.session_state['item_states'] = {} 
 
-# --- FUNKTION: Daten suchen (inkl. Radius Logik) ---
+# --- FUNKTION: Daten suchen ---
 def harvest_materials(land, plz, radius, use_reuse, use_new):
     materials = []
     queries = []
-    if use_reuse: queries.append((f"site:ebay.de OR site:kleinanzeigen.de Fenster gebraucht {plz} {land}", "Re-Use", '#4682b4'))
-    if use_new: queries.append((f"Fenster neu kaufen {plz} {land}", "Neu", '#add8e6'))
+    if use_reuse: queries.append((f"site:ebay.de OR site:kleinanzeigen.de Fenster gebraucht {plz} {land}", "Re-Use", '#4682b4')) # Dunkelblau
+    if use_new: queries.append((f"Fenster neu kaufen {plz} {land}", "Neu", '#add8e6')) # Hellblau
         
     for query, condition, color in queries:
         try:
@@ -265,7 +265,7 @@ with st.sidebar:
     if st.button(T["add_btn"]):
         item_id = uuid.uuid4().hex
         st.session_state['custom_windows'].append({
-            'id': item_id, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': ''
+            'id': item_id, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': '' # Grün
         })
         st.session_state['item_states'][item_id] = {'visible': True, 'force': True, 'man_x': None, 'man_y': None}
         st.rerun()
@@ -297,12 +297,13 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²<br>**{T['win_area']}:** {win_area_m2:.2f} m²<br>*(**{T['fill_rate']}:** {win_pct:.1f}%)*", unsafe_allow_html=True)
         
         # ==============================================================
-        # --- DRAG & DROP HTML/JAVASCRIPT BLOCK ---
+        # --- DRAG & DROP HTML/JAVASCRIPT BLOCK (JETZT MIT GAPS!) ---
         # ==============================================================
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
         
+        # Fenster an JS übergeben
         js_placed = []
         for i, p in enumerate(placed):
             js_placed.append({
@@ -311,24 +312,46 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 "w": int(p['w'] * scale), "h": int(p['h'] * scale)
             })
 
+        # Gaps (Zuschnitte) an JS übergeben
+        js_gaps = []
+        for g in gaps:
+            js_gaps.append({
+                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 400 and g['h'] >= 400 else "",
+                "x": int(g['x'] * scale), "y": int(canvas_h - (g['y'] * scale) - (g['h'] * scale)),
+                "w": int(g['w'] * scale), "h": int(g['h'] * scale)
+            })
+
         html_code = f"""
         <!DOCTYPE html><html><head><style>
             body {{ margin: 0; padding: 0; display: flex; justify-content: center; background-color: #f0f2f6; font-family: sans-serif; }}
             #wall {{ width: {canvas_w}px; height: {canvas_h}px; background: repeating-linear-gradient(45deg, #ffcccc, #ffcccc 10px, #ffffff 10px, #ffffff 20px); border: 4px solid #cc0000; position: relative; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
-            .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; white-space: pre-wrap; line-height: 1.2;}}
+            .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; white-space: pre-wrap; line-height: 1.2; z-index: 10; }}
             .window:active {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
+            .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; }}
         </style></head><body>
             <div id="wall"></div>
             <script>
                 const wall = document.getElementById('wall');
                 const items = {json.dumps(js_placed)};
+                const gaps = {json.dumps(js_gaps)};
+                
                 let draggedEl = null; let startX, startY, initialLeft, initialTop;
 
+                // Gaps zeichnen
+                gaps.forEach(gap => {{
+                    const el = document.createElement('div');
+                    el.className = 'gap'; el.innerText = gap.label;
+                    el.style.width = gap.w + 'px'; el.style.height = gap.h + 'px'; 
+                    el.style.left = gap.x + 'px'; el.style.top = gap.y + 'px';
+                    wall.appendChild(el);
+                }});
+
+                // Fenster zeichnen
                 items.forEach(item => {{
                     const el = document.createElement('div');
                     el.className = 'window'; el.id = item.id; el.innerText = item.label;
                     el.style.backgroundColor = item.color; el.style.width = item.w + 'px';
-                    el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px'; el.style.zIndex = 10;
+                    el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
                     el.addEventListener('mousedown', dragStart);
                     wall.appendChild(el);
                 }});
@@ -347,7 +370,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             </script>
         </body></html>
         """
-        st.caption("🖱️ **Drag & Drop:** Bewege die Fenster mit der Maus frei im Layout!")
+        st.caption("🖱️ **Manuelles Nachjustieren:** Du kannst die Fenster für den Screenshot im Bild frei verschieben (Verschieben triggert keine Neuberechnung!). Um ein Zentrum für das automatische Clustering zu definieren, nutze 'Manuell X/Y' in der Matrix unten.")
         components.html(html_code, height=canvas_h + 20)
 
     # ==========================================
@@ -375,6 +398,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
 
         df_win_data.append({
             "id": item['id'],
+            "_color": item['color'], # Versteckte Farb-Info für das Styling!
             T["col_layer"]: state['visible'], 
             "📍 Manuell X": state.get('man_x'), 
             "📍 Manuell Y": state.get('man_y'), 
@@ -391,10 +415,13 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         
     df_win = pd.DataFrame(df_win_data)
     
+    # NEU: Die Farbe der Matrix-Zeile entspricht der tatsächlichen Fensterfarbe!
     def highlight_windows(row):
         stat = str(row[T['col_status']])
-        if '✅' in stat: return ['background-color: rgba(40, 167, 69, 0.2)'] * len(row)
-        if '📌' in stat: return ['background-color: rgba(255, 193, 7, 0.3)'] * len(row) 
+        color_hex = str(row['_color'])
+        
+        if '✅' in stat: return [f'background-color: {color_hex}66'] * len(row) # 66 ist der Hex-Code für 40% Transparenz
+        if '📌' in stat: return ['background-color: rgba(255, 193, 7, 0.4)'] * len(row) 
         if '🙈' in stat: return ['background-color: rgba(128, 128, 128, 0.2); color: gray'] * len(row)
         return [''] * len(row)
         
@@ -402,6 +429,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         df_win.style.apply(highlight_windows, axis=1), 
         column_config={
             "id": None, 
+            "_color": None, # Farbspalte für den User verstecken
             T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
             "📍 Manuell X": st.column_config.NumberColumn("📍 Manuell X"),
             "📍 Manuell Y": st.column_config.NumberColumn("📍 Manuell Y"),
@@ -448,7 +476,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     df_gaps = pd.DataFrame(df_gaps_data)
     
     final_export_df = pd.concat([export_data, df_gaps], ignore_index=True)
-    final_export_df = final_export_df.drop(columns=['id', T['col_layer'], '📍 Manuell X', '📍 Manuell Y', T['col_force']], errors='ignore')
+    final_export_df = final_export_df.drop(columns=['id', '_color', T['col_layer'], '📍 Manuell X', '📍 Manuell Y', T['col_force']], errors='ignore')
 
     csv = final_export_df.to_csv(index=False).encode('utf-8')
     st.download_button(label=T["export_btn"], data=csv, file_name='stueckliste.csv', mime='text/csv', type="primary")
