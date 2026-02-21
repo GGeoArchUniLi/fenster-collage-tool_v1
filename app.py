@@ -5,9 +5,10 @@ import numpy as np
 import re
 import random
 import uuid
+import json  # <--- HIER FEHLTE DER IMPORT!
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v1.3", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v1.3.1", layout="wide")
 
 # --- 100% LÜCKENLOSES SPRACH-WÖRTERBUCH ---
 LANG_DICT = {
@@ -119,7 +120,7 @@ if 'custom_windows' not in st.session_state: st.session_state['custom_windows'] 
 if 'is_loaded' not in st.session_state: st.session_state['is_loaded'] = False
 if 'item_states' not in st.session_state: st.session_state['item_states'] = {} 
 
-# --- FUNKTION: Daten suchen (inkl. Radius Logik) ---
+# --- FUNKTION: Daten suchen ---
 def harvest_materials(land, plz, radius, use_reuse, use_new):
     materials = []
     queries = []
@@ -223,7 +224,7 @@ def calculate_gaps(wall_w, wall_h, placed, step=50):
                 if cw > 0 and ch > 0:
                     gaps.append({
                         'id': uuid.uuid4().hex, 'x': x*step, 'y': y*step, 'w': cw*step, 'h': ch*step, 
-                        'type': "Zuschnitt", 'color': '#ff4d4d', 'price': 0.0,
+                        'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0,
                         'source': '-', 'condition': 'Neu', 'link': ''
                     })
     return gaps
@@ -256,8 +257,7 @@ with st.sidebar:
     if st.button(T["add_btn"]):
         item_id = uuid.uuid4().hex
         st.session_state['custom_windows'].append({
-            'id': item_id, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 
-            'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': ''
+            'id': item_id, 'w': int(cw_w), 'h': int(cw_h), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Mein Lager', 'condition': 'Eigen', 'link': ''
         })
         st.session_state['item_states'][item_id] = {'visible': True, 'force': True, 'man_x': None, 'man_y': None}
         st.rerun()
