@@ -8,20 +8,21 @@ import uuid
 import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v2.3", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v2.4", layout="wide")
 
 # --- SPRACH-WÖRTERBUCH ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v2.3",
+        "title": "🧱 Patchwork-Fassaden-Generator v2.4",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
-        "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", "auto_rotate": "🔄 Auto-Rotation erlauben",
+        "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", 
+        "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Positionen beim Clustern beibehalten",
         "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)",
-        "price_total": "Gesamtpreis Fenster", "win_area": "Fensterfläche", "wall_area": "Wandfläche", "fill_rate": "Füllgrad",
+        "price_total": "Gesamtpreis Fenster", "win_area": "Fensterfläche", "wall_area": "Gesamtfläche (Wand)", "fill_rate": "Füllgrad",
         "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
-        "gaps_header": "🟥 Benötigte Zuschnitte (100% Lückenlos)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
+        "gaps_header": "🟥 Benötigte Zuschnitte (Ohne Überlappung)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
         "fill": "Zuschnitt Panel",
         "col_layer": "👁️ Sichtbar", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", 
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
@@ -98,26 +99,25 @@ def check_overlap(x, y, w, h, placed):
         if not (x + w <= p['x'] or x >= p['x'] + p['w'] or y + h <= p['y'] or y >= p['y'] + p['h']): return True
     return False
 
-def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, randomness, seed):
+def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, randomness, seed, lock_pinned):
     random.seed(seed)
     placed_items = []
     
-    # 1. Manuell gepinnte Fenster (KI-Docking & Bounds Check)
+    # Trenne gepinnte (manuell gesetzte) von freien Elementen
     pinned_items = [i for i in items if st.session_state['item_states'][i['id']].get('pinned')]
     dynamic_items = [i for i in items if not st.session_state['item_states'][i['id']].get('pinned')]
     
     fixed_x, fixed_y = [], []
     
+    # 1. Gepinnte Elemente setzen (mit Bounds und Overlap-Check)
     for item in pinned_items:
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
         dyn_item = {**item, 'w': eff_w, 'h': eff_h, '_user_rotated': state.get('rotated'), 'is_pinned': True}
         
-        # 1. Bounds Correction (Zwingt das Fenster hart in die Wand)
         target_x = max(0, min(state.get('man_x') or 0, wall_w - eff_w))
         target_y = max(0, min(state.get('man_y') or 0, wall_h - eff_h))
         
-        # 2. Overlap Correction (Docking Algorithmus)
         if not check_overlap(target_x, target_y, eff_w, eff_h, placed_items):
             final_x, final_y = target_x, target_y
         else:
@@ -137,9 +137,10 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
         fixed_x.append(final_x + eff_w / 2)
         fixed_y.append(final_y + eff_h / 2)
         
-        # Matrix-State updaten, damit KI-Korrektur sichtbar wird
-        st.session_state['item_states'][item['id']]['man_x'] = final_x
-        st.session_state['item_states'][item['id']]['man_y'] = final_y
+        # Position in den State zurückschreiben, falls verschoben
+        if lock_pinned:
+            st.session_state['item_states'][item['id']]['man_x'] = final_x
+            st.session_state['item_states'][item['id']]['man_y'] = final_y
             
     cx = sum(fixed_x)/len(fixed_x) if fixed_x else wall_w / 2
     cy = sum(fixed_y)/len(fixed_y) if fixed_y else wall_h / 2
@@ -157,6 +158,7 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
     
     step = 200 if wall_w > 15000 or wall_h > 15000 else 100
     
+    # 2. Dynamische Elemente an das Gravitationszentrum anziehen
     for item in pack_list: 
         state = st.session_state['item_states'][item['id']]
         eff_w, eff_h = (item['h'], item['w']) if state.get('rotated') else (item['w'], item['h'])
@@ -194,6 +196,7 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
         if best_pos:
             placed_items.append(best_pos)
             
+    # Cluster zentrieren, wenn KEINE manuellen Koordinaten als Anker vergeben wurden
     if placed_items and not fixed_x:
         min_x, max_x = min(p['x'] for p in placed_items), max(p['x'] + p['w'] for p in placed_items)
         min_y, max_y = min(p['y'] for p in placed_items), max(p['y'] + p['h'] for p in placed_items)
@@ -204,47 +207,56 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
             
     return placed_items
 
-# EXAKTER ZUSCHNITT-ALGORITHMUS (100% lückenlos)
+# ALGORITHMUS: 100% GARANTIERT LÜCKENFREIER ZUSCHNITT OHNE ÜBERLAPPUNGEN
 def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
     x_coords = {0, wall_w}
     y_coords = {0, wall_h}
     for p in placed:
-        x_coords.add(p['x']); x_coords.add(p['x'] + p['w'])
-        y_coords.add(p['y']); y_coords.add(p['y'] + p['h'])
+        x_coords.add(p['x'])
+        x_coords.add(p['x'] + p['w'])
+        y_coords.add(p['y'])
+        y_coords.add(p['y'] + p['h'])
 
     xs = sorted(list(x_coords))
     ys = sorted(list(y_coords))
+    
     grid = np.zeros((len(ys)-1, len(xs)-1), dtype=bool)
 
+    # Fenster ins Grid eintragen
     for p in placed:
         xi1, xi2 = xs.index(p['x']), xs.index(p['x'] + p['w'])
         yi1, yi2 = ys.index(p['y']), ys.index(p['y'] + p['h'])
         grid[yi1:yi2, xi1:xi2] = True
 
     gaps = []
+    # Grid ablaufen und freie Flächen als Rechtecke blockieren
     for r in range(len(ys)-1):
         for c in range(len(xs)-1):
             if not grid[r, c]:
                 if toggle_dir:
-                    ch, valid = 0, True
+                    # Zuerst maximal in die Höhe scannen
+                    ch = 0
                     while r + ch < len(ys)-1 and not grid[r + ch, c]: ch += 1
-                    cw = 0
+                    # Dann für diese Höhe maximal in die Breite scannen
+                    cw, valid = 0, True
                     while c + cw < len(xs)-1 and valid:
                         for ir in range(r, r + ch):
                             if grid[ir, c + cw]: valid = False; break
                         if valid: cw += 1
                     grid[r:r+ch, c:c+cw] = True
-                    gaps.append({'id': uuid.uuid4().hex, 'x': xs[c], 'y': ys[r], 'w': xs[c+cw]-xs[c], 'h': ys[r+ch]-ys[r], 'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0, 'source': '-', 'condition': 'Neu', 'link': ''})
+                    gaps.append({'id': uuid.uuid4().hex, 'x': xs[c], 'y': ys[r], 'w': xs[c+cw]-xs[c], 'h': ys[r+ch]-ys[r], 'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0, 'source': 'Holz/Metall', 'condition': 'Neu', 'link': ''})
                 else:
-                    cw, valid = 0, True
+                    # Zuerst maximal in die Breite scannen
+                    cw = 0
                     while c + cw < len(xs)-1 and not grid[r, c + cw]: cw += 1
-                    ch = 0
+                    # Dann für diese Breite maximal in die Höhe scannen
+                    ch, valid = 0, True
                     while r + ch < len(ys)-1 and valid:
                         for ic in range(c, c + cw):
                             if grid[r + ch, ic]: valid = False; break
                         if valid: ch += 1
                     grid[r:r+ch, c:c+cw] = True
-                    gaps.append({'id': uuid.uuid4().hex, 'x': xs[c], 'y': ys[r], 'w': xs[c+cw]-xs[c], 'h': ys[r+ch]-ys[r], 'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0, 'source': '-', 'condition': 'Neu', 'link': ''})
+                    gaps.append({'id': uuid.uuid4().hex, 'x': xs[c], 'y': ys[r], 'w': xs[c+cw]-xs[c], 'h': ys[r+ch]-ys[r], 'type': T["fill"], 'color': '#ff4d4d', 'price': 0.0, 'source': 'Holz/Metall', 'condition': 'Neu', 'link': ''})
     return gaps
 
 # --- UI: SIDEBAR ---
@@ -265,7 +277,6 @@ with st.sidebar:
 
     st.divider()
     if st.session_state['is_loaded']:
-        # STATS IN DER SIDEBAR!
         st.header("📊 Kalkulation")
         stats_container = st.empty()
         st.divider()
@@ -307,47 +318,47 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         st.divider()
         st.markdown("**Design-Parameter**")
         auto_rotate = st.checkbox(T["auto_rotate"], value=True)
+        lock_pinned = st.checkbox(T["lock_pinned"], value=True) # NEUE CHECKBOX
         symmetry = st.checkbox(T["symmetry"], value=False)
         chaos_val = st.slider(T["chaos"], 0, 100, 10, 5)
         
         st.button(T["shuffle_btn"], on_click=shuffle_layout, type="primary")
         st.divider()
-        st.button(T["opt_gaps_btn"], on_click=optimize_gaps, help="Dreht die Richtung der Fugen für den Zuschnitt.")
+        st.button(T["opt_gaps_btn"], on_click=optimize_gaps, help="Richtet die Holz/Metall-Paneele horizontal oder vertikal aus.")
 
     with col2:
-        placed = pack_smart_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate, symmetry=symmetry, randomness=chaos_val, seed=st.session_state['layout_seed'])
+        placed = pack_smart_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate, symmetry=symmetry, randomness=chaos_val, seed=st.session_state['layout_seed'], lock_pinned=lock_pinned)
         
-        # EXAKTER ZUSCHNITT OHNE LEEREN FLÄCHEN!
         gaps = calculate_gaps_exact(wall_width, wall_height, placed, toggle_dir=st.session_state['gap_toggle'])
         
+        # NEUES STATS-LAYOUT (Gemäß Anforderung)
         total_price = sum(p['price'] for p in placed)
         wall_area_m2 = (wall_width * wall_height) / 1000000
         win_area_m2 = sum((p['w'] * p['h'])/1000000 for p in placed)
         win_pct = (win_area_m2 / wall_area_m2 * 100) if wall_area_m2 > 0 else 0
         
-        # PREIS IN DIE SIDEBAR RENDERN
-        stats_container.markdown(f"### 💶 {T['price_total']}:\n# **{total_price:.2f} €**")
         stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²<br>**{T['win_area']}:** {win_area_m2:.2f} m²<br>*(**{T['fill_rate']}:** {win_pct:.1f}%)*", unsafe_allow_html=True)
+        stats_container.markdown(f"### 💶 {T['price_total']}:\n# **{total_price:.2f} €**")
         
-        # DRAG & DROP HTML
+        # DRAG & DROP HTML Rendering
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
         
         js_placed = []
         for p in placed:
-            # Wenn das Fenster in der Matrix gepinnt ist, zeige den Pin im Bild!
-            pin_icon = "📌 " if p.get('is_pinned') else ""
+            pin_icon = "📌\n" if p.get('is_pinned') else ""
             js_placed.append({
                 "id": p['id'], "label": f"{pin_icon}{p['pos_label']}\n{p['w']}x{p['h']}", "color": p['color'],
                 "x": int(p['x'] * scale), "y": int(canvas_h - (p['y'] * scale) - (p['h'] * scale)),
-                "w": int(p['w'] * scale), "h": int(p['h'] * scale)
+                "w": int(p['w'] * scale), "h": int(p['h'] * scale),
+                "is_pinned": p.get('is_pinned', False) # GANZ WICHTIG FÜR JS
             })
 
         js_gaps = []
         for g in gaps:
             js_gaps.append({
-                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 400 and g['h'] >= 400 else "",
+                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 600 and g['h'] >= 600 else "",
                 "x": int(g['x'] * scale), "y": int(canvas_h - (g['y'] * scale) - (g['h'] * scale)),
                 "w": int(g['w'] * scale), "h": int(g['h'] * scale)
             })
@@ -357,8 +368,9 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             body {{ margin: 0; padding: 0; display: flex; justify-content: center; background-color: #f0f2f6; font-family: sans-serif; }}
             #wall {{ width: {canvas_w}px; height: {canvas_h}px; background: repeating-linear-gradient(45deg, #ffcccc, #ffcccc 10px, #ffffff 10px, #ffffff 20px); border: 4px solid #cc0000; position: relative; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
             .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; white-space: pre-wrap; line-height: 1.2; z-index: 10; }}
-            .window:active {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
-            .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }}
+            .window.pinned {{ cursor: not-allowed; opacity: 0.9; box-shadow: none; border: 4px solid #222; }}
+            .window:active:not(.pinned) {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
+            .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; }}
         </style></head><body>
             <div id="wall"></div>
             <script>
@@ -377,7 +389,9 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
 
                 items.forEach(item => {{
                     const el = document.createElement('div');
-                    el.className = 'window'; el.id = item.id; el.innerText = item.label;
+                    el.className = 'window'; 
+                    if (item.is_pinned) el.classList.add('pinned'); // Blockiert das Dragging visuell
+                    el.id = item.id; el.innerText = item.label;
                     el.style.backgroundColor = item.color; el.style.width = item.w + 'px';
                     el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
                     el.addEventListener('mousedown', dragStart);
@@ -385,6 +399,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 }});
 
                 function dragStart(e) {{
+                    if (e.target.classList.contains('pinned')) return; // VERHINDERT DRAG & DROP BEI PIN
                     draggedEl = e.target; startX = e.clientX; startY = e.clientY;
                     initialLeft = parseInt(draggedEl.style.left, 10); initialTop = parseInt(draggedEl.style.top, 10);
                     document.addEventListener('mousemove', drag); document.addEventListener('mouseup', dragEnd);
@@ -398,6 +413,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             </script>
         </body></html>
         """
+        st.caption("ℹ️ **Info:** Das Verschieben mit der Maus ist eine Vorschau. Um ein Fenster für die KI-Berechnung unbeweglich zu machen, nutze `📌 Pin` in der Tabelle.")
         components.html(html_code, height=canvas_h + 20)
 
     # ==========================================
@@ -433,7 +449,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             "id": item['id'],
             "_color": item['color'], 
             T["col_layer"]: state['visible'], 
-            T["col_pin"]: state.get('pinned', False), # DIE NEUE PIN SPALTE
+            T["col_pin"]: state.get('pinned', False), 
             "📍 Man X": state.get('man_x'), 
             "📍 Man Y": state.get('man_y'), 
             T["col_rotate"]: state.get('rotated', False), 
@@ -462,8 +478,8 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         column_config={
             "_color": None, 
             T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
-            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Setzt das Fenster auf 0,0 und verankert es."),
-            "📍 Man X": st.column_config.NumberColumn("📍 Man X", help="Wird von der KI korrigiert, falls fehlerhaft!"),
+            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Setzt X/Y auf 0 und blockiert Maus-Drag."),
+            "📍 Man X": st.column_config.NumberColumn("📍 Man X", help="Wird von der KI korrigiert!"),
             "📍 Man Y": st.column_config.NumberColumn("📍 Man Y"),
             T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
             T["col_force"]: st.column_config.CheckboxColumn(T["col_force"])
@@ -484,26 +500,24 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             new_mx = None if pd.isna(row['📍 Man X']) else int(row['📍 Man X'])
             new_my = None if pd.isna(row['📍 Man Y']) else int(row['📍 Man Y'])
 
-            # Logik für den Pin: Hat der User gerade auf Pin geklickt?
             if new_pin != state.get('pinned', False):
                 state['pinned'] = new_pin
                 if new_pin:
+                    # PIN ICON KLICKT: SETZE AUF 0
                     state['man_x'] = 0
                     state['man_y'] = 0
                 else:
                     state['man_x'] = None
                     state['man_y'] = None
                 changes_made = True
-            # Hat der User X/Y manuell getippt?
             elif new_mx != state.get('man_x') or new_my != state.get('man_y'):
                 state['man_x'] = new_mx
                 state['man_y'] = new_my
                 if new_mx is not None or new_my is not None:
-                    state['pinned'] = True # Auto-Pin beim Tippen
+                    state['pinned'] = True 
                 else:
                     state['pinned'] = False
                 changes_made = True
-            # Layer / Rotate / Force
             elif new_vis != state['visible'] or new_rot != state.get('rotated', False) or new_fce != state['force']:
                 state['visible'] = new_vis
                 state['rotated'] = new_rot
