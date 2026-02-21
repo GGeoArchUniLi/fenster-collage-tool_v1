@@ -8,19 +8,19 @@ import uuid
 import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v2.5", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v2.6", layout="wide")
 
 # --- SPRACH-WÖRTERBUCH (Komplett) ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v2.5",
+        "title": "🧱 Patchwork-Fassaden-Generator v2.6",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
         "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", 
         "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Positionen beim Clustern beibehalten",
         "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)",
-        "price_total": "Gesamtpreis Fenster", "win_area": "Fensterfläche", "wall_area": "Gesamtfläche (Wand)", "fill_rate": "Füllgrad",
+        "price_total": "Gesamtpreis Fenster", "win_area": "Gesamtfläche Fenster", "wall_area": "Fläche Wandöffnung", "fill_rate": "Füllgrad",
         "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
         "gaps_header": "🟥 Benötigte Zuschnitte (Exakt, ohne Überlappung)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
         "fill": "Zuschnitt Panel",
@@ -139,7 +139,6 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
         fixed_x.append(final_x + eff_w / 2)
         fixed_y.append(final_y + eff_h / 2)
         
-        # Korrigierte Position zurückschreiben wenn Lock aktiv
         if lock_pinned:
             st.session_state['item_states'][item['id']]['man_x'] = final_x
             st.session_state['item_states'][item['id']]['man_y'] = final_y
@@ -269,7 +268,7 @@ with st.sidebar:
 
     st.divider()
     if st.session_state['is_loaded']:
-        st.header("📊 Kalkulation")
+        st.header("📊 Kalkulation (Sidebar)")
         stats_container = st.empty()
         st.divider()
 
@@ -295,10 +294,11 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     col1, col2 = st.columns([1, 3])
     with col1:
         st.subheader(T["wall_header"])
-        # Synchronisierte Slider/Inputs
+        
         c_sli1, c_num1 = st.columns([2, 1])
         c_sli1.slider("Breite", 1000, 30000, value=st.session_state.wall_w, step=100, key="w_sli", on_change=sync_w_sli, label_visibility="collapsed")
         c_num1.number_input("B", 1000, 30000, value=st.session_state.wall_w, step=100, key="w_num", on_change=sync_w_num, label_visibility="collapsed")
+        
         c_sli2, c_num2 = st.columns([2, 1])
         c_sli2.slider("Höhe", 1000, 30000, value=st.session_state.wall_h, step=100, key="h_sli", on_change=sync_h_sli, label_visibility="collapsed")
         c_num2.number_input("H", 1000, 30000, value=st.session_state.wall_h, step=100, key="h_num", on_change=sync_h_num, label_visibility="collapsed")
@@ -321,20 +321,28 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         placed = pack_smart_cluster(wall_width, wall_height, usable_inventory, allow_auto_rotate=auto_rotate, symmetry=symmetry, randomness=chaos_val, seed=st.session_state['layout_seed'], lock_pinned=lock_pinned)
         gaps = calculate_gaps_exact(wall_width, wall_height, placed, toggle_dir=st.session_state['gap_toggle'])
         
-        # Stats & Preis für Sidebar
+        # --- BERECHNUNG DER WERTE ---
         total_price = sum(p['price'] for p in placed)
         wall_area_m2 = (wall_width * wall_height) / 1000000
         win_area_m2 = sum((p['w'] * p['h'])/1000000 for p in placed)
         win_pct = (win_area_m2 / wall_area_m2 * 100) if wall_area_m2 > 0 else 0
         
-        stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²<br>**{T['win_area']}:** {win_area_m2:.2f} m²<br>*(**{T['fill_rate']}:** {win_pct:.1f}%)*", unsafe_allow_html=True)
-        stats_container.markdown(f"### 💶 {T['price_total']}:\n# **{total_price:.2f} €**")
+        # --- KORREKTUR: DASHBOARD UNTER/ÜBER DER MATRIX ---
+        st.markdown("### 📊 Live-Kalkulation")
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1.metric(T["wall_area"], f"{wall_area_m2:.2f} m²")
+        m_col2.metric(T["win_area"], f"{win_area_m2:.2f} m²")
+        m_col3.metric(T["fill_rate"], f"{win_pct:.1f} %")
+        m_col4.metric(T["price_total"], f"{total_price:.2f} €")
         
-        # HTML Canvas & Scale Figure
+        # Sidebar Stats (Kompakt)
+        stats_container.markdown(f"**{T['wall_area']}:** {wall_area_m2:.2f} m²\n\n**{T['win_area']}:** {win_area_m2:.2f} m²\n\n**{T['fill_rate']}:** {win_pct:.1f}%\n\n### 💶 {T['price_total']}:\n## **{total_price:.2f} €**")
+        
+        # DRAG & DROP HTML Rendering mit Scale Figure
         scale = 800 / max(wall_width, 1)
         canvas_w = int(wall_width * scale)
         canvas_h = int(wall_height * scale)
-        figure_h_px = int(1780 * scale) # 1.78m Person
+        figure_h_px = int(1780 * scale) # 1.78m Figur
 
         js_placed = []
         for p in placed:
@@ -349,7 +357,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         js_gaps = []
         for g in gaps:
             js_gaps.append({
-                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 600 and g['h'] >= 600 else "",
+                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 400 and g['h'] >= 400 else "",
                 "x": int(g['x'] * scale), "y": int(canvas_h - (g['y'] * scale) - (g['h'] * scale)),
                 "w": int(g['w'] * scale), "h": int(g['h'] * scale)
             })
@@ -382,12 +390,13 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             </script>
         </body></html>
         """
-        st.caption("ℹ️ **Info:** Das Verschieben mit der Maus ist eine Vorschau. Um ein Fenster für die KI-Berechnung unbeweglich zu machen, nutze `📌 Pin` in der Tabelle.")
+        st.caption("ℹ️ **Info:** Das Verschieben mit der Maus ist eine Vorschau. Um ein Fenster für die KI-Berechnung unbeweglich zu machen, nutze `📌 Pin` in der Tabelle unten.")
         components.html(html_code, height=canvas_h + 50)
 
     # ==========================================
     # --- TABELLE 1: FENSTER MATRIX ---
     # ==========================================
+    st.divider()
     st.subheader(T["matrix_header"])
     df_win_data = []
     placed_dict = {p['id']: p for p in placed}
@@ -428,7 +437,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         df_win.style.apply(highlight_windows, axis=1), 
         column_config={
             "_color": None, T["col_layer"]: st.column_config.CheckboxColumn(T["col_layer"]),
-            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Setzt X/Y auf 0 und blockiert Maus-Drag."),
+            T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"], help="Verankert das Fenster. X/Y wird bei Bedarf von der KI korrigiert."),
             "📍 Man X": st.column_config.NumberColumn("📍 Man X", help="Wird von der KI korrigiert!"),
             "📍 Man Y": st.column_config.NumberColumn("📍 Man Y"), T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
             T["col_force"]: st.column_config.CheckboxColumn(T["col_force"])
@@ -471,6 +480,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     final_export_df = final_export_df.drop(columns=['_color', T['col_layer'], T['col_pin'], T['col_rotate'], '📍 Man X', '📍 Man Y', T['col_force']], errors='ignore')
     csv = final_export_df.to_csv(index=False).encode('utf-8')
     st.download_button(label=T["export_btn"], data=csv, file_name='stueckliste.csv', mime='text/csv', type="primary")
+    
     st.subheader(T["gaps_header"])
     if not df_gaps.empty: st.dataframe(df_gaps[[T["col_type"], T["col_dim"], T["col_area"], "Herkunft"]], hide_index=True, use_container_width=True)
     else: st.success(T["no_gaps"])
