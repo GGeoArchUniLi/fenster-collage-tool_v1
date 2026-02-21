@@ -5,15 +5,15 @@ import numpy as np
 import re
 import random
 import uuid
-import json  # <--- HIER FEHLTE DER IMPORT!
+import json
 from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator v1.3.1", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v1.3.2", layout="wide")
 
-# --- 100% LÜCKENLOSES SPRACH-WÖRTERBUCH ---
+# --- 100% LÜCKENLOSES SPRACH-WÖRTERBUCH (FIXED) ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v1.3",
+        "title": "🧱 Patchwork-Fassaden-Generator v1.3.2",
         "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
         "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
         "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
@@ -21,11 +21,12 @@ LANG_DICT = {
         "price_total": "Gesamtpreis", "win_area": "Fensterfläche", "wall_area": "Wandfläche", "fill_rate": "Füllgrad",
         "matrix_header": "📋 Fenster-Steuerung", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
         "gaps_header": "🟥 Benötigte Zuschnitte", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
+        "fill": "Zuschnitt", # <-- HIER WAR DER FEHLER (Gefehlt)
         "col_layer": "👁️ Layer", "col_force": "⭐ Priorität", "col_type": "Typ", "col_status": "Status", 
         "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
     },
     "🇬🇧 EN": {
-        "title": "🧱 Patchwork Facade Generator v1.3",
+        "title": "🧱 Patchwork Facade Generator v1.3.2",
         "search_header": "1. Global Search", "country": "Country", "zip": "ZIP / City", "radius": "Radius (km)",
         "reuse": "🔄 Re-Use Windows", "new": "🆕 Brand New Windows", "search_btn": "🔍 Search Marketplaces",
         "custom_header": "2. Custom Inventory", "width": "Width (mm)", "height": "Height (mm)", "add_btn": "➕ Add Window",
@@ -33,11 +34,12 @@ LANG_DICT = {
         "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate",
         "matrix_header": "📋 Window Control", "export_btn": "📥 Download Shopping List (CSV)",
         "gaps_header": "🟥 Required Filler Panels", "no_gaps": "Wall is perfectly filled! No panels needed.",
+        "fill": "Filler Panel",
         "col_layer": "👁️ Layer", "col_force": "⭐ Priority", "col_type": "Type", "col_status": "Status", 
         "col_dim": "Dimensions", "col_area": "Area (m²)", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
     },
     "🇫🇷 FR": {
-        "title": "🧱 Générateur de Façade v1.3",
+        "title": "🧱 Générateur de Façade v1.3.2",
         "search_header": "1. Recherche Globale", "country": "Pays", "zip": "Code Postal", "radius": "Rayon (km)",
         "reuse": "🔄 Fenêtres Réutilisées", "new": "🆕 Fenêtres Neuves", "search_btn": "🔍 Chercher les marchés",
         "custom_header": "2. Inventaire Personnalisé", "width": "Largeur (mm)", "height": "Hauteur (mm)", "add_btn": "➕ Ajouter",
@@ -45,11 +47,12 @@ LANG_DICT = {
         "price_total": "Prix Total", "win_area": "Surface Fenêtre", "wall_area": "Surface Mur", "fill_rate": "Taux de remplissage",
         "matrix_header": "📋 Contrôle des fenêtres", "export_btn": "📥 Télécharger la liste (CSV)",
         "gaps_header": "🟥 Panneaux de remplissage", "no_gaps": "Mur parfaitement rempli ! Aucun panneau nécessaire.",
+        "fill": "Panneau de remplissage",
         "col_layer": "👁️ Calque", "col_force": "⭐ Priorité", "col_type": "Type", "col_status": "Statut", 
         "col_dim": "Dimensions", "col_area": "Surface (m²)", "col_source": "Source", "col_price": "Prix", "col_link": "🛒 Boutique"
     },
     "🇮🇹 IT": {
-        "title": "🧱 Generatore di Facciate v1.3",
+        "title": "🧱 Generatore di Facciate v1.3.2",
         "search_header": "1. Ricerca Globale", "country": "Paese", "zip": "CAP", "radius": "Raggio (km)",
         "reuse": "🔄 Finestre Usate", "new": "🆕 Finestre Nuove", "search_btn": "🔍 Cerca mercati",
         "custom_header": "2. Inventario", "width": "Larghezza (mm)", "height": "Altezza (mm)", "add_btn": "➕ Aggiungi",
@@ -57,11 +60,12 @@ LANG_DICT = {
         "price_total": "Prezzo Totale", "win_area": "Area Finestre", "wall_area": "Area Muro", "fill_rate": "Riempimento",
         "matrix_header": "📋 Controllo finestre", "export_btn": "📥 Scarica lista (CSV)",
         "gaps_header": "🟥 Pannelli richiesti", "no_gaps": "Muro perfettamente riempito!",
+        "fill": "Pannello di riempimento",
         "col_layer": "👁️ Layer", "col_force": "⭐ Priorità", "col_type": "Tipo", "col_status": "Stato", 
         "col_dim": "Dimensioni", "col_area": "Area (m²)", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "🛒 Negozio"
     },
     "🇨🇭 RM": {
-        "title": "🧱 Generatur da Façadas v1.3",
+        "title": "🧱 Generatur da Façadas v1.3.2",
         "search_header": "1. Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius (km)",
         "reuse": "🔄 Fanestras duvradas", "new": "🆕 Fanestras novas", "search_btn": "🔍 Tschertgar martgads",
         "custom_header": "2. Inventari", "width": "Ladezza (mm)", "height": "Autezza (mm)", "add_btn": "➕ Agiuntar",
@@ -69,11 +73,12 @@ LANG_DICT = {
         "price_total": "Pretsch total", "win_area": "Surfatscha", "wall_area": "Paraid", "fill_rate": "Emplenida",
         "matrix_header": "📋 Control da fanestras", "export_btn": "📥 Chargiar glista (CSV)",
         "gaps_header": "🟥 Panels", "no_gaps": "Perfegt!",
+        "fill": "Panel da rimplazzar",
         "col_layer": "👁️ Layer", "col_force": "⭐ Prioritad", "col_type": "Tip", "col_status": "Status", 
         "col_dim": "Dimensiuns", "col_area": "Surfatscha", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "🛒 Butia"
     },
     "🇧🇬 BG": {
-        "title": "🧱 Генератор на фасади v1.3",
+        "title": "🧱 Генератор на фасади v1.3.2",
         "search_header": "1. Търсене", "country": "Държава", "zip": "Пощенски код", "radius": "Радиус (км)",
         "reuse": "🔄 Използвани прозорци", "new": "🆕 Нови прозорци", "search_btn": "🔍 Търсене в пазари",
         "custom_header": "2. Мой инвентар", "width": "Ширина (мм)", "height": "Височина (мм)", "add_btn": "➕ Добави",
@@ -81,11 +86,12 @@ LANG_DICT = {
         "price_total": "Обща цена", "win_area": "Площ прозорци", "wall_area": "Площ стена", "fill_rate": "Запълване",
         "matrix_header": "📋 Управление на прозорци", "export_btn": "📥 Изтегли списък (CSV)",
         "gaps_header": "🟥 Нужни панели", "no_gaps": "Стената е идеално запълнена!",
+        "fill": "Панел за пълнеж",
         "col_layer": "👁️ Слой", "col_force": "⭐ Приоритет", "col_type": "Тип", "col_status": "Статус", 
         "col_dim": "Размери", "col_area": "Площ (м²)", "col_source": "Източник", "col_price": "Цена", "col_link": "🛒 Магазин"
     },
     "🇮🇱 HE": {
-        "title": "🧱 מחולל חזיתות טלאים v1.3",
+        "title": "🧱 מחולל חזיתות טלאים v1.3.2",
         "search_header": "1. חיפוש גלובלי", "country": "מדינה", "zip": "מיקוד", "radius": "רדיוס (ק״מ)",
         "reuse": "🔄 חלונות בשימוש חוזר", "new": "🆕 חלונות חדשים", "search_btn": "🔍 חפש בשווקים",
         "custom_header": "2. מלאי אישי", "width": "רוחב (מ״מ)", "height": "גובה (מ״מ)", "add_btn": "➕ הוסף",
@@ -93,11 +99,12 @@ LANG_DICT = {
         "price_total": "מחיר כולל", "win_area": "שטח חלונות", "wall_area": "שטח קיר", "fill_rate": "אחוז מילוי",
         "matrix_header": "📋 בקרת חלונות", "export_btn": "📥 הורד רשימת קניות (CSV)",
         "gaps_header": "🟥 פאנלים חסרים", "no_gaps": "הקיר מלא לחלוטין! אין צורך בפאנלים.",
+        "fill": "פאנל מילוי",
         "col_layer": "👁️ שכבה", "col_force": "⭐ עדיפות", "col_type": "סוג", "col_status": "סטטוס", 
         "col_dim": "מידות", "col_area": "שטח (מ״ר)", "col_source": "מקור", "col_price": "מחיר", "col_link": "🛒 חנות"
     },
     "🇯🇵 JA": {
-        "title": "🧱 パッチワークファサード v1.3",
+        "title": "🧱 パッチワークファサード v1.3.2",
         "search_header": "1. グローバル検索", "country": "国", "zip": "郵便番号", "radius": "半径 (km)",
         "reuse": "🔄 中古窓", "new": "🆕 新品窓", "search_btn": "🔍 市場を検索",
         "custom_header": "2. カスタム在庫", "width": "幅 (mm)", "height": "高さ (mm)", "add_btn": "➕ 追加",
@@ -105,6 +112,7 @@ LANG_DICT = {
         "price_total": "合計価格", "win_area": "窓面積", "wall_area": "壁面積", "fill_rate": "充填率",
         "matrix_header": "📋 ウィンドウコントロール", "export_btn": "📥 リストをダウンロード (CSV)",
         "gaps_header": "🟥 必要なパネル", "no_gaps": "完全に充填されました！",
+        "fill": "フィラーパネル",
         "col_layer": "👁️ レイヤー", "col_force": "⭐ 優先順位", "col_type": "タイプ", "col_status": "ステータス", 
         "col_dim": "寸法", "col_area": "面積 (m²)", "col_source": "ソース", "col_price": "価格", "col_link": "🛒 ショップ"
     }
@@ -120,7 +128,7 @@ if 'custom_windows' not in st.session_state: st.session_state['custom_windows'] 
 if 'is_loaded' not in st.session_state: st.session_state['is_loaded'] = False
 if 'item_states' not in st.session_state: st.session_state['item_states'] = {} 
 
-# --- FUNKTION: Daten suchen ---
+# --- FUNKTION: Daten suchen (inkl. Radius Logik) ---
 def harvest_materials(land, plz, radius, use_reuse, use_new):
     materials = []
     queries = []
@@ -339,7 +347,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             </script>
         </body></html>
         """
-        st.caption("🖱️ **Drag & Drop Preview:** Bewege die Fenster direkt im Bild mit der Maus!")
+        st.caption("🖱️ **Drag & Drop:** Bewege die Fenster mit der Maus frei im Layout!")
         components.html(html_code, height=canvas_h + 20)
 
     # ==========================================
