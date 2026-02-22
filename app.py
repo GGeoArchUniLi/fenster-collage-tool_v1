@@ -1,4 +1,3 @@
-import os
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -7,38 +6,75 @@ import re
 import random
 import uuid
 import json
-try:
-    from duckduckgo_search import DDGS
-except ImportError:
-    pass
+from duckduckgo_search import DDGS
 
-st.set_page_config(page_title="Patchwork Facade Generator Pro", layout="wide")
+st.set_page_config(page_title="Patchwork Facade Generator v3.0", layout="wide")
 
-# --- SPRACH-WÖRTERBUCH (Alle 9 Sprachen inkl. Spanisch) ---
+# --- HACK: VERSTECKTE KOMMUNIKATION ZWISCHEN JAVASCRIPT UND PYTHON ---
+# Macht das Eingabefeld unsichtbar, das wir als Datenbrücke nutzen
+st.markdown("""
+    <style>
+    div[data-testid="stTextInput"]:has(input[aria-label="js_bridge"]) {
+        position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+js_bridge_val = st.text_input("js_bridge", key="js_bridge", label_visibility="collapsed")
+if 'last_js_ts' not in st.session_state:
+    st.session_state.last_js_ts = 0
+
+# --- SPRACH-WÖRTERBUCH (Alle 9 Sprachen) ---
 LANG_DICT = {
     "🇩🇪 DE": {
-        "title": "🧱 Patchwork-Fassaden-Generator v4.1", "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)", "reuse": "🔄 Gebraucht", "new": "🆕 Neu", "search_btn": "🔍 Suchen", "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen", "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Fenster beim Würfeln behalten", "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)", "price_total": "Gesamtpreis Fenster", "win_area": "Gesamtfläche Fenster", "wall_area": "Fläche Wandöffnung", "fill_rate": "Füllgrad", "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 CSV Einkaufsliste", "gaps_header": "🟥 Benötigte Zuschnitte (Exakt, keine Überlappung)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.", "fill": "Zuschnitt Panel", "col_layer": "👁️ Sichtbar", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
+        "title": "🧱 Patchwork-Fassaden-Generator v3.0",
+        "search_header": "1. Globale Suche", "country": "Land", "zip": "PLZ / Ort", "radius": "Umkreis (km)",
+        "reuse": "🔄 Gebrauchte Fenster", "new": "🆕 Fabrikneue Fenster", "search_btn": "🔍 Marktplätze durchsuchen",
+        "custom_header": "2. Eigenbestand", "width": "Breite (mm)", "height": "Höhe (mm)", "add_btn": "➕ Hinzufügen",
+        "wall_header": "Wandöffnung (bis 30m)", "shuffle_btn": "🎲 Neu clustern (KI)", 
+        "auto_rotate": "🔄 Auto-Rotation erlauben", "lock_pinned": "🔒 Gepinnte Positionen beim Clustern beibehalten",
+        "symmetry": "📐 Symmetrisches Cluster", "chaos": "Varianz / Chaos (%)", "opt_gaps_btn": "✂️ Zuschnitte umschalten (H/V)",
+        "price_total": "Gesamtpreis Fenster", "win_area": "Gesamtfläche Fenster", "wall_area": "Fläche Wandöffnung", "fill_rate": "Füllgrad",
+        "matrix_header": "📋 Fenster-Steuerung & Docking", "export_btn": "📥 Einkaufsliste herunterladen (CSV)",
+        "gaps_header": "🟥 Benötigte Zuschnitte (Exakt, ohne Überlappung)", "no_gaps": "Die Wand ist perfekt gefüllt! Keine Zuschnitte benötigt.",
+        "fill": "Zuschnitt Panel",
+        "col_layer": "👁️ Sichtbar", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Typ", "col_status": "Status", 
+        "col_dim": "Maße (BxH)", "col_area": "Fläche (m²)", "col_source": "Herkunft", "col_price": "Preis", "col_link": "🛒 Shop"
     },
     "🇪🇸 ES": {
-        "title": "🧱 Generador de Fachadas v4.1", "search_header": "1. Búsqueda Global", "country": "País", "zip": "C.P.", "radius": "Radio (km)", "reuse": "🔄 Usado", "new": "🆕 Nuevo", "search_btn": "🔍 Buscar", "custom_header": "2. Inventario Propio", "width": "Ancho (mm)", "height": "Alto (mm)", "add_btn": "➕ Añadir", "wall_header": "Apertura (hasta 30m)", "shuffle_btn": "🎲 Reagrupar (IA)", "auto_rotate": "🔄 Auto-rotación", "lock_pinned": "🔒 Mantener posiciones fijadas", "symmetry": "📐 Clúster Simétrico", "chaos": "Caos (%)", "opt_gaps_btn": "✂️ Alternar cortes (H/V)", "price_total": "Precio Total", "win_area": "Área de Ventanas", "wall_area": "Área de Apertura", "fill_rate": "Tasa de relleno", "matrix_header": "📋 Matriz de Control", "export_btn": "📥 Exportar CSV", "gaps_header": "🟥 Paneles de Relleno (Sin superposición)", "no_gaps": "¡Muro perfecto!", "fill": "Panel de corte", "col_layer": "👁️ Visible", "col_pin": "📌 Fijar", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tipo", "col_status": "Estado", "col_dim": "Dimensiones", "col_area": "Área (m²)", "col_source": "Origen", "col_price": "Precio", "col_link": "🛒 Tienda"
+        "title": "🧱 Generador de Fachadas v3.0",
+        "search_header": "1. Búsqueda Global", "country": "País", "zip": "C.P. / Ciudad", "radius": "Radio (km)",
+        "reuse": "🔄 Ventanas Usadas", "new": "🆕 Ventanas Nuevas", "search_btn": "🔍 Buscar en mercados",
+        "custom_header": "2. Inventario Propio", "width": "Ancho (mm)", "height": "Alto (mm)", "add_btn": "➕ Añadir",
+        "wall_header": "Apertura (hasta 30m)", "shuffle_btn": "🎲 Reagrupar (IA)", 
+        "auto_rotate": "🔄 Permitir auto-rotación", "lock_pinned": "🔒 Mantener posiciones fijadas",
+        "symmetry": "📐 Clúster Simétrico", "chaos": "Varianza / Caos (%)", "opt_gaps_btn": "✂️ Alternar cortes (H/V)",
+        "price_total": "Precio Total", "win_area": "Área de Ventanas", "wall_area": "Área de Apertura", "fill_rate": "Tasa de relleno",
+        "matrix_header": "📋 Matriz de Control", "export_btn": "📥 Descargar lista (CSV)",
+        "gaps_header": "🟥 Paneles de Relleno Requeridos", "no_gaps": "¡El muro está perfectamente lleno!",
+        "fill": "Panel de corte",
+        "col_layer": "👁️ Visible", "col_pin": "📌 Fijar", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tipo", "col_status": "Estado", 
+        "col_dim": "Dimensiones", "col_area": "Área (m²)", "col_source": "Origen", "col_price": "Precio", "col_link": "🛒 Tienda"
     },
     "🇬🇧 EN": {
-        "title": "🧱 Facade Generator v4.1", "search_header": "1. Search", "country": "Country", "zip": "ZIP", "radius": "Radius", "reuse": "🔄 Used", "new": "🆕 New", "search_btn": "🔍 Search", "custom_header": "2. Custom Inventory", "width": "Width", "height": "Height", "add_btn": "➕ Add", "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (AI)", "auto_rotate": "🔄 Auto-Rotation", "lock_pinned": "🔒 Lock pinned", "symmetry": "📐 Symmetry", "chaos": "Chaos", "opt_gaps_btn": "✂️ Toggle Fillers", "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate", "matrix_header": "📋 Window Control", "export_btn": "📥 Export CSV", "gaps_header": "🟥 Required Fillers", "no_gaps": "Perfectly filled!", "fill": "Filler", "col_layer": "👁️ Vis", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Status", "col_dim": "Dims", "col_area": "Area", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
+        "title": "🧱 Patchwork Facade Generator v3.0", "search_header": "1. Global Search", "country": "Country", "zip": "ZIP / City", "radius": "Radius (km)", "reuse": "🔄 Re-Use Windows", "new": "🆕 Brand New Windows", "search_btn": "🔍 Search Marketplaces", "custom_header": "2. Custom Inventory", "width": "Width (mm)", "height": "Height (mm)", "add_btn": "➕ Add Window", "wall_header": "Wall Opening", "shuffle_btn": "🎲 Shuffle (AI)", "auto_rotate": "🔄 Allow Auto-Rotation", "lock_pinned": "🔒 Lock pinned positions", "symmetry": "📐 Symmetrical Cluster", "chaos": "Variance / Chaos (%)", "opt_gaps_btn": "✂️ Toggle Fillers (H/V)", "price_total": "Total Price", "win_area": "Window Area", "wall_area": "Wall Area", "fill_rate": "Fill Rate", "matrix_header": "📋 Window Control", "export_btn": "📥 Download Shopping List", "gaps_header": "🟥 Required Filler Panels", "no_gaps": "Wall is perfectly filled!", "fill": "Filler Panel", "col_layer": "👁️ Visible", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Status", "col_dim": "Dimensions", "col_area": "Area (m²)", "col_source": "Source", "col_price": "Price", "col_link": "🛒 Shop"
     },
-    "🇫🇷 FR": {"title": "🧱 Générateur de Façade", "search_header": "Recherche", "country": "Pays", "zip": "CP", "radius": "Rayon", "reuse": "Usagé", "new": "Neuf", "search_btn": "Chercher", "custom_header": "Inventaire", "width": "Largeur", "height": "Hauteur", "add_btn": "Ajouter", "wall_header": "Ouverture", "shuffle_btn": "🎲 Mélanger", "auto_rotate": "🔄 Rotation", "lock_pinned": "🔒 Verrouiller", "symmetry": "📐 Symétrie", "chaos": "Chaos", "opt_gaps_btn": "✂️ Alterner", "price_total": "Prix Total", "win_area": "Surface Fen.", "wall_area": "Surface Mur", "fill_rate": "Remplissage", "matrix_header": "📋 Matrice", "export_btn": "📥 CSV", "gaps_header": "🟥 Panneaux", "no_gaps": "Parfait!", "fill": "Panneau", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Type", "col_status": "Statut", "col_dim": "Dim", "col_area": "Surface", "col_source": "Source", "col_price": "Prix", "col_link": "Lien"},
-    "🇮🇹 IT": {"title": "🧱 Generatore Facciate", "search_header": "Ricerca", "country": "Paese", "zip": "CAP", "radius": "Raggio", "reuse": "Usato", "new": "Nuovo", "search_btn": "Cerca", "custom_header": "Inventario", "width": "Largh.", "height": "Altezza", "add_btn": "Aggiungi", "wall_header": "Muro", "shuffle_btn": "🎲 Rimescola", "auto_rotate": "🔄 Rotazione", "lock_pinned": "🔒 Blocca", "symmetry": "📐 Simmetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Tagli", "price_total": "Prezzo", "win_area": "Area Fin.", "wall_area": "Area Muro", "fill_rate": "Riemp.", "matrix_header": "📋 Matrice", "export_btn": "📥 CSV", "gaps_header": "🟥 Pannelli", "no_gaps": "Perfetto!", "fill": "Pannello", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Tipo", "col_status": "Stato", "col_dim": "Dim", "col_area": "Area", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "Link"},
-    "🇨🇭 RM": {"title": "🧱 Generatur Façadas", "search_header": "Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius", "reuse": "Duvrà", "new": "Nov", "search_btn": "Tschertgar", "custom_header": "Inventari", "width": "Ladezza", "height": "Autezza", "add_btn": "Agiuntar", "wall_header": "Paraid", "shuffle_btn": "🎲 Maschadar", "auto_rotate": "🔄 Rotaziun", "lock_pinned": "🔒 Fixar", "symmetry": "📐 Simetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Panels", "price_total": "Pretsch", "win_area": "Surfatscha", "wall_area": "Paraid", "fill_rate": "Emplenida", "matrix_header": "📋 Matrix", "export_btn": "📥 CSV", "gaps_header": "🟥 Panels", "no_gaps": "Perfegt!", "fill": "Panel", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Tip", "col_status": "Status", "col_dim": "Dim", "col_area": "Area", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "Link"},
-    "🇧🇬 BG": {"title": "🧱 Генератор на фасади", "search_header": "Търсене", "country": "Държава", "zip": "ПК", "radius": "Радиус", "reuse": "Стари", "new": "Нови", "search_btn": "Търси", "custom_header": "Инвентар", "width": "Ширина", "height": "Височина", "add_btn": "Добави", "wall_header": "Стена", "shuffle_btn": "🎲 Разбъркай", "auto_rotate": "🔄 Ротация", "lock_pinned": "🔒 Заключи", "symmetry": "📐 Симетрия", "chaos": "Хаос", "opt_gaps_btn": "✂️ Панели", "price_total": "Цена", "win_area": "Площ Проз.", "wall_area": "Площ Стена", "fill_rate": "Запълване", "matrix_header": "📋 Матрица", "export_btn": "📥 CSV", "gaps_header": "🟥 Панели", "no_gaps": "Идеално!", "fill": "Панел", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "Тип", "col_status": "Статус", "col_dim": "Разм", "col_area": "Площ", "col_source": "Източник", "col_price": "Цена", "col_link": "Линк"},
-    "🇮🇱 HE": {"title": "🧱 מחולל חזיתות", "search_header": "חיפוש", "country": "מדינה", "zip": "מיקוד", "radius": "רדיוס", "reuse": "ישן", "new": "חדש", "search_btn": "חפש", "custom_header": "מלאי", "width": "רוחב", "height": "גובה", "add_btn": "הוסף", "wall_header": "קיר", "shuffle_btn": "🎲 ערבב", "auto_rotate": "🔄 סיבוב", "lock_pinned": "🔒 נעל", "symmetry": "📐 סימטריה", "chaos": "כאוס", "opt_gaps_btn": "✂️ פאנלים", "price_total": "מחיר", "win_area": "שטח חלונות", "wall_area": "שטח קיר", "fill_rate": "מילוי", "matrix_header": "📋 טבלה", "export_btn": "📥 CSV", "gaps_header": "🟥 פאנלים", "no_gaps": "מושלם!", "fill": "פאנל", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "סוג", "col_status": "סטטוס", "col_dim": "מידות", "col_area": "שטח", "col_source": "מקור", "col_price": "מחיר", "col_link": "לינק"},
-    "🇯🇵 JA": {"title": "🧱 ファサードジェネレーター", "search_header": "検索", "country": "国", "zip": "郵便番号", "radius": "半径", "reuse": "中古", "new": "新品", "search_btn": "検索", "custom_header": "在庫", "width": "幅", "height": "高さ", "add_btn": "追加", "wall_header": "壁", "shuffle_btn": "🎲 シャッフル", "auto_rotate": "🔄 自動回転", "lock_pinned": "🔒 固定", "symmetry": "📐 対称", "chaos": "カオス", "opt_gaps_btn": "✂️ パネル", "price_total": "価格", "win_area": "窓面積", "wall_area": "壁面積", "fill_rate": "充填率", "matrix_header": "📋 マトリックス", "export_btn": "📥 CSV", "gaps_header": "🟥 パネル", "no_gaps": "完璧！", "fill": "パネル", "col_layer": "👁️", "col_pin": "📌", "col_rotate": "🔄", "col_force": "⭐", "col_type": "タイプ", "col_status": "ステータス", "col_dim": "寸法", "col_area": "面積", "col_source": "ソース", "col_price": "価格", "col_link": "リンク"}
+    "🇫🇷 FR": {
+        "title": "🧱 Générateur de Façade v3.0", "search_header": "1. Recherche Globale", "country": "Pays", "zip": "Code Postal", "radius": "Rayon (km)", "reuse": "🔄 Fenêtres Réutilisées", "new": "🆕 Fenêtres Neuves", "search_btn": "🔍 Chercher les marchés", "custom_header": "2. Inventaire", "width": "Largeur (mm)", "height": "Hauteur (mm)", "add_btn": "➕ Ajouter", "wall_header": "Ouverture", "shuffle_btn": "🎲 Mélanger (IA)", "auto_rotate": "🔄 Autoriser la rotation", "lock_pinned": "🔒 Verrouiller positions", "symmetry": "📐 Clúster symétrique", "chaos": "Chaos (%)", "opt_gaps_btn": "✂️ Alterner remplissage", "price_total": "Prix Total", "win_area": "Surface Fenêtre", "wall_area": "Surface Mur", "fill_rate": "Remplissage", "matrix_header": "📋 Contrôle", "export_btn": "📥 Télécharger (CSV)", "gaps_header": "🟥 Panneaux de remplissage", "no_gaps": "Parfaitement rempli!", "fill": "Panneau", "col_layer": "👁️ Visibilité", "col_pin": "📌 Épingler", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Type", "col_status": "Statut", "col_dim": "Dimensions", "col_area": "Surface (m²)", "col_source": "Source", "col_price": "Prix", "col_link": "🛒 Lien"
+    },
+    "🇮🇹 IT": {"title": "🧱 Generatore di Facciate", "search_header": "Ricerca", "country": "Paese", "zip": "CAP", "radius": "Raggio", "reuse": "🔄 Usate", "new": "🆕 Nuove", "search_btn": "🔍 Cerca", "custom_header": "Inventario", "width": "Larghezza", "height": "Altezza", "add_btn": "➕ Aggiungi", "wall_header": "Muro", "shuffle_btn": "🎲 Rimescola", "auto_rotate": "🔄 Auto-Rotazione", "lock_pinned": "🔒 Blocca", "symmetry": "📐 Simmetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Tagli", "price_total": "Prezzo", "win_area": "Area Fin.", "wall_area": "Area Muro", "fill_rate": "Riempimento", "matrix_header": "📋 Matrice", "export_btn": "📥 Scarica", "gaps_header": "🟥 Pannelli", "no_gaps": "Perfetto!", "fill": "Pannello", "col_layer": "👁️ Vis.", "col_pin": "📌 Pin", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tipo", "col_status": "Stato", "col_dim": "Dim.", "col_area": "Area", "col_source": "Fonte", "col_price": "Prezzo", "col_link": "🛒 Shop"},
+    "🇨🇭 RM": {"title": "🧱 Generatur da Façadas", "search_header": "Tschertga", "country": "Pajais", "zip": "PLZ", "radius": "Radius", "reuse": "🔄 Duvradas", "new": "🆕 Novas", "search_btn": "🔍 Tschertgar", "custom_header": "Inventari", "width": "Ladezza", "height": "Autezza", "add_btn": "➕ Agiuntar", "wall_header": "Paraid", "shuffle_btn": "🎲 Maschadar", "auto_rotate": "🔄 Rotaziun", "lock_pinned": "🔒 Bloccar", "symmetry": "📐 Simetria", "chaos": "Caos", "opt_gaps_btn": "✂️ Panels", "price_total": "Pretsch", "win_area": "Surfatscha Fan.", "wall_area": "Paraid", "fill_rate": "Emplenida", "matrix_header": "📋 Matrix", "export_btn": "📥 Chargiar", "gaps_header": "🟥 Panels", "no_gaps": "Perfegt!", "fill": "Panel", "col_layer": "👁️ Vis.", "col_pin": "📌 Fix", "col_rotate": "🔄 90°", "col_force": "⭐ Prio", "col_type": "Tip", "col_status": "Status", "col_dim": "Dimensiuns", "col_area": "Surf.", "col_source": "Funtauna", "col_price": "Pretsch", "col_link": "🛒 Butia"},
+    "🇧🇬 BG": {"title": "🧱 Генератор на фасади", "search_header": "Търсене", "country": "Държава", "zip": "ПК", "radius": "Радиус", "reuse": "🔄 Стари", "new": "🆕 Нови", "search_btn": "🔍 Търси", "custom_header": "Инвентар", "width": "Ширина", "height": "Височина", "add_btn": "➕ Добави", "wall_header": "Стена", "shuffle_btn": "🎲 Разбъркай", "auto_rotate": "🔄 Ротация", "lock_pinned": "🔒 Заключи", "symmetry": "📐 Симетрия", "chaos": "Хаос", "opt_gaps_btn": "✂️ Панели", "price_total": "Цена", "win_area": "Площ Проз.", "wall_area": "Площ Стена", "fill_rate": "Запълване", "matrix_header": "📋 Матрица", "export_btn": "📥 Изтегли", "gaps_header": "🟥 Панели", "no_gaps": "Идеално!", "fill": "Панел", "col_layer": "👁️ Вид.", "col_pin": "📌 Пин", "col_rotate": "🔄 90°", "col_force": "⭐ Прио", "col_type": "Тип", "col_status": "Статус", "col_dim": "Размери", "col_area": "Площ", "col_source": "Източник", "col_price": "Цена", "col_link": "🛒 Магазин"},
+    "🇮🇱 HE": {"title": "🧱 מחולל חזיתות", "search_header": "חיפוש", "country": "מדינה", "zip": "מיקוד", "radius": "רדיוס", "reuse": "🔄 ישנים", "new": "🆕 חדשים", "search_btn": "🔍 חפש", "custom_header": "מלאי", "width": "רוחב", "height": "גובה", "add_btn": "➕ הוסף", "wall_header": "קיר", "shuffle_btn": "🎲 ערבב", "auto_rotate": "🔄 סיבוב", "lock_pinned": "🔒 נעל", "symmetry": "📐 סימטריה", "chaos": "כאוס", "opt_gaps_btn": "✂️ פאנלים", "price_total": "מחיר", "win_area": "שטח חלונות", "wall_area": "שטח קיר", "fill_rate": "מילוי", "matrix_header": "📋 טבלה", "export_btn": "📥 הורד", "gaps_header": "🟥 פאנלים", "no_gaps": "מושלם!", "fill": "פאנל", "col_layer": "👁️ תצוגה", "col_pin": "📌 נעץ", "col_rotate": "🔄 90°", "col_force": "⭐ קדימות", "col_type": "סוג", "col_status": "סטטוס", "col_dim": "מידות", "col_area": "שטח", "col_source": "מקור", "col_price": "מחיר", "col_link": "🛒 חנות"},
+    "🇯🇵 JA": {"title": "🧱 ファサードジェネレーター", "search_header": "検索", "country": "国", "zip": "郵便番号", "radius": "半径", "reuse": "🔄 中古", "new": "🆕 新品", "search_btn": "🔍 検索", "custom_header": "在庫", "width": "幅", "height": "高さ", "add_btn": "➕ 追加", "wall_header": "壁", "shuffle_btn": "🎲 シャッフル", "auto_rotate": "🔄 自動回転", "lock_pinned": "🔒 固定", "symmetry": "📐 対称", "chaos": "カオス", "opt_gaps_btn": "✂️ パネル", "price_total": "価格", "win_area": "窓面積", "wall_area": "壁面積", "fill_rate": "充填率", "matrix_header": "📋 マトリックス", "export_btn": "📥 ダウンロード", "gaps_header": "🟥 パネル", "no_gaps": "完璧！", "fill": "パネル", "col_layer": "👁️ 表示", "col_pin": "📌 ピン", "col_rotate": "🔄 90°", "col_force": "⭐ 優先", "col_type": "タイプ", "col_status": "ステータス", "col_dim": "寸法", "col_area": "面積", "col_source": "ソース", "col_price": "価格", "col_link": "🛒 ショップ"}
 }
 
 langs = list(LANG_DICT.keys())
-lang_choice = st.radio("Language / Sprache / Idioma:", langs, horizontal=True)
+lang_choice = st.radio("Sprache / Idioma / Language:", langs, horizontal=True)
 T = LANG_DICT[lang_choice]
 st.title(T["title"])
 
-# --- SESSION STATES ---
+# --- SESSION STATES INITIALISIERUNG ---
 if 'inventory' not in st.session_state: st.session_state['inventory'] = []
 if 'custom_windows' not in st.session_state: st.session_state['custom_windows'] = []
 if 'is_loaded' not in st.session_state: st.session_state['is_loaded'] = False
@@ -46,171 +82,50 @@ if 'item_states' not in st.session_state: st.session_state['item_states'] = {}
 if 'pos_counter' not in st.session_state: st.session_state['pos_counter'] = 1 
 if 'layout_seed' not in st.session_state: st.session_state['layout_seed'] = 42 
 if 'gap_toggle' not in st.session_state: st.session_state['gap_toggle'] = False
-if 'last_ts' not in st.session_state: st.session_state['last_ts'] = 0
 
-# Bidirektionale Slider Sync
-if 'w_val' not in st.session_state: st.session_state.w_val = 4000
-if 'h_val' not in st.session_state: st.session_state.h_val = 3000
+# VERARBEITUNG DER DATEN AUS DEM JS BRÜCKEN-HACK (Drag&Drop Updates)
+if js_bridge_val:
+    try:
+        data = json.loads(js_bridge_val)
+        ts = data.get("ts", 0)
+        if ts > st.session_state.last_js_ts:
+            st.session_state.last_js_ts = ts
+            
+            action = data.get("action")
+            item_id = data.get("id")
+            state = st.session_state['item_states'].get(item_id)
+            
+            if state:
+                if action == "rotate":
+                    state['rotated'] = not state.get('rotated', False)
+                elif action == "pin":
+                    state['pinned'] = not state.get('pinned', False)
+                    if state['pinned']:
+                        state['man_x'] = data.get("x")
+                        state['man_y'] = data.get("y")
+                    else:
+                        state['man_x'] = None
+                        state['man_y'] = None
+                elif action == "move":
+                    state['man_x'] = data.get("x")
+                    state['man_y'] = data.get("y")
+                    state['pinned'] = True # Beim Bewegen mit der Maus wird es sofort gepinnt!
+            st.rerun()
+    except Exception as e:
+        pass
 
-def sync_w_sli(): st.session_state.w_val = st.session_state.w_sli
-def sync_w_num(): st.session_state.w_val = st.session_state.w_num
-def sync_h_sli(): st.session_state.h_val = st.session_state.h_sli
-def sync_h_num(): st.session_state.h_val = st.session_state.h_num
+# --- SLIDER SYNCHRONISATION ---
+if 'w_sli' not in st.session_state: st.session_state.w_sli = 4000
+if 'w_num' not in st.session_state: st.session_state.w_num = 4000
+if 'h_sli' not in st.session_state: st.session_state.h_sli = 3000
+if 'h_num' not in st.session_state: st.session_state.h_num = 3000
 
+def sync_w_from_sli(): st.session_state.w_num = st.session_state.w_sli
+def sync_w_from_num(): st.session_state.w_sli = st.session_state.w_num
+def sync_h_from_sli(): st.session_state.h_num = st.session_state.h_sli
+def sync_h_from_num(): st.session_state.h_sli = st.session_state.h_num
 def shuffle_layout(): st.session_state['layout_seed'] = random.randint(1, 10000)
 def optimize_gaps(): st.session_state['gap_toggle'] = not st.session_state['gap_toggle']
-
-# =====================================================================
-# --- OFFIZIELLE STREAMLIT KOMPONENTE FÜR DRAG & DROP (DER BUGFIX) ---
-# =====================================================================
-html_component_code = """
-<!DOCTYPE html>
-<html>
-<head>
-  <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.3.0/dist/streamlit.js"></script>
-  <style>
-    body { margin: 0; padding: 0; background-color: #f0f2f6; font-family: sans-serif; overflow: hidden; }
-    .container { display: flex; align-items: flex-end; justify-content: center; gap: 15px; padding-top: 10px; }
-    .scale-figure { opacity: 0.8; }
-    #wall { border: 4px solid #31333F; position: relative; background: repeating-linear-gradient(45deg, #fce4e4, #fce4e4 10px, #ffffff 10px, #ffffff 20px); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius: 2px; }
-    .window { position: absolute; border: 2px solid #555; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #222; cursor: grab; user-select: none; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: box-shadow 0.1s; }
-    .window.pinned { cursor: not-allowed; opacity: 0.95; border: 3px solid #31333F; box-shadow: none; }
-    .window:active:not(.pinned) { cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }
-    .win-icons { position: absolute; top: 2px; right: 2px; display: flex; gap: 3px; z-index: 20; }
-    .win-btn { background: rgba(255,255,255,0.9); border: 1px solid #777; border-radius: 3px; font-size: 10px; cursor: pointer; padding: 2px 4px; pointer-events: auto; }
-    .win-btn:hover { background: white; transform: scale(1.1); }
-    .gap { position: absolute; background-color: rgba(255,75,75,0.4); border: 1px dashed #FF4B4B; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; box-sizing: border-box; z-index: 5; font-weight: 600; pointer-events: none; text-shadow: 0px 1px 2px rgba(0,0,0,0.8); }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div id="figure" class="scale-figure" title="Scale Figure (1,78m)"></div>
-    <div id="wall"></div>
-  </div>
-  <script>
-    let isReady = false;
-    let scale = 1;
-    let canvas_h = 1;
-    let draggedEl = null; 
-    let startX, startY, initialLeft, initialTop;
-    
-    function sendToPython(action, id, x, y) {
-        Streamlit.setComponentValue({action: action, id: id, x: x, y: y, ts: Date.now()});
-    }
-
-    function renderData(args) {
-        scale = args.scale;
-        canvas_h = args.wall_h * scale;
-        const wallW = args.wall_w * scale;
-        
-        const wall = document.getElementById("wall");
-        wall.style.width = wallW + "px";
-        wall.style.height = canvas_h + "px";
-        wall.innerHTML = ""; 
-
-        const fig = document.getElementById("figure");
-        fig.style.width = Math.max(25, 400 * scale) + "px";
-        fig.style.height = (1780 * scale) + "px";
-        const svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 280'><circle cx='50' cy='25' r='15' fill='%23333'/><path d='M 30 50 Q 50 40 70 50 L 85 130 L 70 130 L 65 70 L 60 130 L 65 260 L 45 260 L 50 140 L 45 140 L 40 260 L 20 260 L 25 130 L 20 70 L 15 130 Z' fill='%23333'/></svg>";
-        fig.style.background = `url("${svg}") no-repeat bottom center/contain`;
-
-        args.gaps.forEach(g => {
-            const el = document.createElement('div');
-            el.className = 'gap';
-            el.style.width = (g.w * scale) + 'px'; el.style.height = (g.h * scale) + 'px';
-            el.style.left = (g.x * scale) + 'px'; el.style.top = (canvas_h - (g.y * scale) - (g.h * scale)) + 'px';
-            if((g.w * g.h / 1000000) >= 0.4) el.innerText = (g.w * g.h / 1000000).toFixed(2) + " m²";
-            wall.appendChild(el);
-        });
-
-        args.windows.forEach(w => {
-            const el = document.createElement('div');
-            el.className = 'window';
-            if(w.is_pinned) el.classList.add('pinned');
-            el.id = w.id;
-            
-            let pinIcon = w.is_pinned ? "❌" : "📌";
-            el.innerHTML = `
-                <div class="win-icons">
-                    <div class="win-btn rot-btn" title="Rotieren">🔄</div>
-                    <div class="win-btn pin-btn" title="Pinnen">${pinIcon}</div>
-                </div>
-                <div style="margin-top:12px; pointer-events:none; text-align:center; line-height: 1.2;">
-                    ${w.is_pinned ? "📌 " : ""}${w.label}<br><span style="font-size: 9px; font-weight: 500;">${w.w}x${w.h}</span>
-                </div>
-            `;
-            
-            el.style.backgroundColor = w.color;
-            el.style.width = (w.w * scale) + 'px'; el.style.height = (w.h * scale) + 'px';
-            el.style.left = (w.x * scale) + 'px'; el.style.top = (canvas_h - (w.y * scale) - (w.h * scale)) + 'px';
-            
-            el.querySelector('.rot-btn').addEventListener('click', (e) => {
-                e.stopPropagation(); sendToPython("rotate", w.id, 0, 0);
-            });
-            el.querySelector('.pin-btn').addEventListener('click', (e) => {
-                e.stopPropagation(); 
-                const mm_x = Math.round(parseInt(el.style.left) / scale);
-                const mm_y = Math.round((canvas_h - parseInt(el.style.top) - parseInt(el.style.height)) / scale);
-                sendToPython("pin", w.id, mm_x, mm_y);
-            });
-            
-            el.addEventListener('mousedown', dragStart);
-            wall.appendChild(el);
-        });
-        Streamlit.setFrameHeight();
-    }
-
-    function onRender(event) {
-        if (event.data.type !== "streamlit:render") return;
-        renderData(event.data.args);
-        if (!isReady) {
-            Streamlit.setFrameHeight();
-            isReady = true;
-        }
-    }
-
-    window.addEventListener("message", onRender);
-    Streamlit.setComponentReady();
-
-    function dragStart(e) {
-        if (e.target.classList.contains('win-btn')) return;
-        let targetWindow = e.target.closest('.window');
-        if (!targetWindow || targetWindow.classList.contains('pinned')) return;
-        draggedEl = targetWindow; startX = e.clientX; startY = e.clientY;
-        initialLeft = parseInt(draggedEl.style.left, 10); initialTop = parseInt(draggedEl.style.top, 10);
-        document.addEventListener('mousemove', drag); document.addEventListener('mouseup', dragEnd);
-    }
-    function drag(e) {
-        if (!draggedEl) return; e.preventDefault();
-        draggedEl.style.left = (initialLeft + (e.clientX - startX)) + 'px';
-        draggedEl.style.top = (initialTop + (e.clientY - startY)) + 'px';
-    }
-    function dragEnd(e) {
-        document.removeEventListener('mousemove', drag); document.removeEventListener('mouseup', dragEnd);
-        if(draggedEl) {
-            const px_x = parseInt(draggedEl.style.left, 10);
-            const px_y = parseInt(draggedEl.style.top, 10);
-            const px_h = parseInt(draggedEl.style.height, 10);
-            const mm_x = Math.round(px_x / scale);
-            const mm_y = Math.round((canvas_h - px_y - px_h) / scale);
-            sendToPython("move", draggedEl.id, mm_x, mm_y);
-            draggedEl = null;
-        }
-    }
-  </script>
-</body>
-</html>
-"""
-
-# HIER IST DER FIX: Streamlit Custom Component Ordner generieren
-if not os.path.exists("canvas_component"):
-    os.makedirs("canvas_component")
-with open("canvas_component/index.html", "w", encoding="utf-8") as f:
-    f.write(html_component_code)
-    
-interactive_canvas = components.declare_component("interactive_canvas", path="canvas_component")
-# =====================================================================
-
 
 # --- FUNKTION: Daten suchen ---
 def harvest_materials(land, plz, radius, use_reuse, use_new):
@@ -254,7 +169,7 @@ def harvest_materials(land, plz, radius, use_reuse, use_new):
             st.session_state['item_states'][item_id] = {'visible': True, 'pinned': False, 'force': False, 'rotated': False, 'man_x': None, 'man_y': None}
     return materials
 
-# --- ALGORITHMEN (KI Core) ---
+# --- ALGORITHMEN ---
 def check_overlap(x, y, w, h, placed):
     for p in placed:
         if not (x + w <= p['x'] or x >= p['x'] + p['w'] or y + h <= p['y'] or y >= p['y'] + p['h']): return True
@@ -312,6 +227,7 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
             
     normal_items = sorted(normal_items, key=lambda i: i['_weight'], reverse=True)
     pack_list = forced_items + normal_items
+    
     step = 200 if wall_w > 15000 or wall_h > 15000 else 100
     
     for item in pack_list: 
@@ -360,7 +276,6 @@ def pack_smart_cluster(wall_w, wall_h, items, allow_auto_rotate, symmetry, rando
             
     return placed_items
 
-# ALGORITHMUS: Exakter Zuschnitt (Ohne Überlappung)
 def calculate_gaps_exact(wall_w, wall_h, placed, toggle_dir):
     x_coords = {0, wall_w}
     y_coords = {0, wall_h}
@@ -428,7 +343,7 @@ with st.sidebar:
         pos_label = f"P{st.session_state['pos_counter']}"
         st.session_state['pos_counter'] += 1
         st.session_state['custom_windows'].append({
-            'id': item_id, 'pos_label': pos_label, 'w': int(st.session_state.cw_w_in), 'h': int(st.session_state.cw_h_in), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Eigenbestand', 'condition': 'Eigen', 'link': ''
+            'id': item_id, 'pos_label': pos_label, 'w': int(st.session_state.cw_w_in), 'h': int(st.session_state.cw_h_in), 'type': 'Fenster', 'color': '#90EE90', 'price': 0.0, 'source': 'Lager', 'condition': 'Eigen', 'link': ''
         })
         st.session_state['item_states'][item_id] = {'visible': True, 'pinned': False, 'force': True, 'rotated': False, 'man_x': None, 'man_y': None}
         st.rerun()
@@ -443,15 +358,15 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         st.subheader(T["wall_header"])
         
         c_sli1, c_num1 = st.columns([2, 1])
-        c_sli1.slider("B", 1000, 30000, value=st.session_state.w_val, step=100, key="w_sli", on_change=sync_w_sli, label_visibility="collapsed")
-        c_num1.number_input("B", 1000, 30000, value=st.session_state.w_val, step=100, key="w_num", on_change=sync_w_num, label_visibility="collapsed")
+        c_sli1.slider("B", 1000, 30000, key="w_sli", on_change=sync_w_from_sli, label_visibility="collapsed")
+        c_num1.number_input("B", 1000, 30000, key="w_num", on_change=sync_w_from_num, label_visibility="collapsed")
         
         c_sli2, c_num2 = st.columns([2, 1])
-        c_sli2.slider("H", 1000, 30000, value=st.session_state.h_val, step=100, key="h_sli", on_change=sync_h_sli, label_visibility="collapsed")
-        c_num2.number_input("H", 1000, 30000, value=st.session_state.h_val, step=100, key="h_num", on_change=sync_h_num, label_visibility="collapsed")
+        c_sli2.slider("H", 1000, 30000, key="h_sli", on_change=sync_h_from_sli, label_visibility="collapsed")
+        c_num2.number_input("H", 1000, 30000, key="h_num", on_change=sync_h_from_num, label_visibility="collapsed")
         
-        wall_width = st.session_state.w_val
-        wall_height = st.session_state.h_val
+        wall_width = st.session_state.w_num
+        wall_height = st.session_state.h_num
         
         st.divider()
         st.markdown("**Design-Parameter**")
@@ -481,50 +396,138 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
         m_col3.metric(T["fill_rate"], f"{win_pct:.1f} %")
         m_col4.metric(T["price_total"], f"{total_price:.2f} €")
         
-        # --- ECHTE BIDIREKTIONALE DRAG & DROP KOMPONENTE ---
+        # --- INTERAKTIVES DRAG & DROP HTML RENDERING (BIDGE) ---
         scale = 800 / max(wall_width, 1)
-        
+        canvas_w = int(wall_width * scale)
+        canvas_h = int(wall_height * scale)
+        figure_h_px = int(1780 * scale)
+
         js_placed = []
         for p in placed:
+            pin_icon = "📌<br>" if p.get('is_pinned') else ""
             js_placed.append({
-                "id": p['id'], "label": p['pos_label'], "color": p['color'],
-                "x": p['x'], "y": p['y'], "w": p['w'], "h": p['h'],
+                "id": p['id'], "label": f"{pin_icon}{p['pos_label']}<br>{p['w']}x{p['h']}", "color": p['color'],
+                "x": int(p['x'] * scale), "y": int(canvas_h - (p['y'] * scale) - (p['h'] * scale)),
+                "w": int(p['w'] * scale), "h": int(p['h'] * scale),
                 "is_pinned": p.get('is_pinned', False)
             })
 
         js_gaps = []
         for g in gaps:
-            js_gaps.append({"w": g['w'], "h": g['h'], "x": g['x'], "y": g['y']})
+            js_gaps.append({
+                "label": f"{(g['w']*g['h']/1000000):.2f} m²" if g['w'] >= 400 and g['h'] >= 400 else "",
+                "x": int(g['x'] * scale), "y": int(canvas_h - (g['y'] * scale) - (g['h'] * scale)),
+                "w": int(g['w'] * scale), "h": int(g['h'] * scale)
+            })
 
-        # Aufruf der magischen Custom Component
-        component_result = interactive_canvas(
-            windows=js_placed, gaps=js_gaps, 
-            wall_w=wall_width, wall_h=wall_height, scale=scale, 
-            key="canvas"
-        )
-        
-        # WENN JAVASCRIPT EIN SIGNAL SENDET (Drag, Pin, Rotate)
-        if component_result and component_result.get("ts", 0) > st.session_state.last_ts:
-            st.session_state.last_ts = component_result["ts"]
-            act = component_result["action"]
-            item_id = component_result["id"]
-            state = st.session_state['item_states'].get(item_id)
-            
-            if state:
-                if act == "rotate":
-                    state['rotated'] = not state.get('rotated', False)
-                elif act == "pin":
-                    state['pinned'] = not state.get('pinned', False)
-                    if state['pinned']:
-                        state['man_x'] = component_result["x"]
-                        state['man_y'] = component_result["y"]
-                    else:
-                        state['man_x'] = None; state['man_y'] = None
-                elif act == "move":
-                    state['man_x'] = component_result["x"]
-                    state['man_y'] = component_result["y"]
-                    state['pinned'] = True
-            st.rerun()
+        # Klassische CAD Architektur-Silhouette
+        arch_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 280'><circle cx='50' cy='25' r='15' fill='%23333'/><path d='M 30 50 Q 50 40 70 50 L 85 130 L 70 130 L 65 70 L 60 130 L 65 260 L 45 260 L 50 140 L 45 140 L 40 260 L 20 260 L 25 130 L 20 70 L 15 130 Z' fill='%23333'/></svg>"
+
+        html_code = f"""
+        <!DOCTYPE html><html><head><style>
+            body {{ margin: 0; padding: 0; background-color: #f0f2f6; font-family: sans-serif; }}
+            .container {{ display: flex; align-items: flex-end; justify-content: center; gap: 15px; padding-top: 20px; }}
+            .scale-figure {{ width: {max(25, int(400*scale))}px; height: {figure_h_px}px; background: url("{arch_svg}") no-repeat bottom center/contain; opacity: 0.8; }}
+            #wall {{ width: {canvas_w}px; height: {canvas_h}px; background: repeating-linear-gradient(45deg, #ffcccc, #ffcccc 10px, #ffffff 10px, #ffffff 20px); border: 4px solid #cc0000; position: relative; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
+            .window {{ position: absolute; border: 3px solid #222; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold; color: #222; cursor: grab; user-select: none; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: box-shadow 0.2s; z-index: 10; flex-direction: column; }}
+            .window.pinned {{ cursor: not-allowed; opacity: 0.95; border: 4px solid #222; box-shadow: none; }}
+            .window:active:not(.pinned) {{ cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); z-index: 1000 !important; }}
+            .win-icons {{ position: absolute; top: 2px; right: 2px; display: flex; gap: 3px; z-index: 20; }}
+            .win-btn {{ background: rgba(255,255,255,0.9); border: 1px solid #555; border-radius: 3px; font-size: 10px; cursor: pointer; padding: 2px 4px; pointer-events: auto; }}
+            .win-btn:hover {{ background: #fff; transform: scale(1.1); }}
+            .gap {{ position: absolute; background-color: rgba(255, 77, 77, 0.4); border: 1px dashed darkred; display: flex; align-items: center; justify-content: center; font-size: 9px; color: white; box-sizing: border-box; z-index: 5; font-weight: bold; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }}
+        </style></head><body>
+            <div class="container">
+                <div class="scale-figure" title="Scale Figure (1,78m)"></div>
+                <div id="wall"></div>
+            </div>
+            <script>
+                const scale = {scale};
+                const canvas_h = {canvas_h};
+                const wall = document.getElementById('wall');
+                const items = {json.dumps(js_placed)};
+                const gaps = {json.dumps(js_gaps)};
+                let draggedEl = null; let startX, startY, initialLeft, initialTop;
+
+                // Sendet Aktionen an Python (Bidirektionaler Hack)
+                function sendAction(action, id, el) {{
+                    const px_x = parseInt(el.style.left, 10);
+                    const px_y = parseInt(el.style.top, 10);
+                    const px_h = parseInt(el.style.height, 10);
+                    const mm_x = Math.round(px_x / scale);
+                    const mm_y = Math.round((canvas_h - px_y - px_h) / scale);
+                    
+                    const data = {{action: action, id: id, x: mm_x, y: mm_y, ts: Date.now()}};
+                    const parent = window.parent.document;
+                    const input = parent.querySelector('input[aria-label="js_bridge"]');
+                    if (input) {{
+                        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                        setter.call(input, JSON.stringify(data));
+                        input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    }}
+                }}
+
+                gaps.forEach(gap => {{
+                    const el = document.createElement('div');
+                    el.className = 'gap'; el.innerText = gap.label;
+                    el.style.width = gap.w + 'px'; el.style.height = gap.h + 'px'; el.style.left = gap.x + 'px'; el.style.top = gap.y + 'px';
+                    wall.appendChild(el);
+                }});
+
+                items.forEach(item => {{
+                    const el = document.createElement('div');
+                    el.className = 'window'; 
+                    if (item.is_pinned) el.classList.add('pinned');
+                    el.id = item.id; 
+                    
+                    el.innerHTML = '<div class="win-icons">' +
+                                   '<div class="win-btn rot-btn" title="Rotieren (Syncs with Matrix)">🔄</div>' +
+                                   '<div class="win-btn pin-btn" title="Anpinnen/Lösen (Syncs with Matrix)">📌</div>' +
+                                   '</div>' +
+                                   '<div style="margin-top:12px; pointer-events:none;">' + item.label + '</div>';
+                                   
+                    el.style.backgroundColor = item.color; el.style.width = item.w + 'px'; el.style.height = item.h + 'px'; el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
+                    
+                    // Buttons lösen Python Aktionen aus!
+                    el.querySelector('.rot-btn').addEventListener('click', (e) => {{
+                        e.stopPropagation();
+                        sendAction("rotate", item.id, el);
+                    }});
+                    el.querySelector('.pin-btn').addEventListener('click', (e) => {{
+                        e.stopPropagation();
+                        sendAction("pin", item.id, el);
+                    }});
+                    
+                    el.addEventListener('mousedown', dragStart);
+                    wall.appendChild(el);
+                }});
+
+                function dragStart(e) {{
+                    if (e.target.classList.contains('win-btn')) return;
+                    let targetWindow = e.target.closest('.window');
+                    if (!targetWindow || targetWindow.classList.contains('pinned')) return;
+                    draggedEl = targetWindow; startX = e.clientX; startY = e.clientY;
+                    initialLeft = parseInt(draggedEl.style.left, 10); initialTop = parseInt(draggedEl.style.top, 10);
+                    document.addEventListener('mousemove', drag); document.addEventListener('mouseup', dragEnd);
+                }}
+                function drag(e) {{
+                    if (!draggedEl) return; e.preventDefault();
+                    draggedEl.style.left = (initialLeft + (e.clientX - startX)) + 'px';
+                    draggedEl.style.top = (initialTop + (e.clientY - startY)) + 'px';
+                }}
+                function dragEnd(e) {{ 
+                    document.removeEventListener('mousemove', drag); 
+                    document.removeEventListener('mouseup', dragEnd); 
+                    if (draggedEl) {{
+                        sendAction("move", draggedEl.id, draggedEl);
+                        draggedEl = null; 
+                    }}
+                }}
+            </script>
+        </body></html>
+        """
+        st.caption("🖱️ **Voll interaktiv:** Du kannst Fenster jetzt mit der Maus ziehen, im Bild pinnen oder drehen. Es synchronisiert sich live mit der KI und der Matrix unten!")
+        components.html(html_code, height=canvas_h + 50)
 
     # ==========================================
     # --- TABELLE 1: FENSTER MATRIX ---
@@ -556,7 +559,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             "id": item['id'], "_color": item['color'], T["col_layer"]: state['visible'], T["col_pin"]: state.get('pinned', False), 
             "📍 Man X": state.get('man_x'), "📍 Man Y": state.get('man_y'), T["col_rotate"]: state.get('rotated', False), 
             T["col_force"]: state['force'], "Pos": item['pos_label'], T["col_status"]: status, T["col_dim"]: f"{disp_w} x {disp_h}",
-            T["col_area"]: f"{area_m2:.2f}", T["col_type"]: item['type'], T["col_price"]: f"{item['price']:.2f} €", T["col_link"]: item['link']
+            T["col_area"]: f"{area_m2:.2f}", T["col_type"]: item['type'], T["col_price"]: f"{item['price']:.2f} €"
         })
         
     df_win = pd.DataFrame(df_win_data)
@@ -575,10 +578,9 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
             T["col_pin"]: st.column_config.CheckboxColumn(T["col_pin"]),
             "📍 Man X": st.column_config.NumberColumn("📍 Man X"),
             "📍 Man Y": st.column_config.NumberColumn("📍 Man Y"), T["col_rotate"]: st.column_config.CheckboxColumn(T["col_rotate"]),
-            T["col_force"]: st.column_config.CheckboxColumn(T["col_force"]),
-            T["col_link"]: st.column_config.LinkColumn(T["col_link"], display_text="Link 🔗")
+            T["col_force"]: st.column_config.CheckboxColumn(T["col_force"])
         },
-        disabled=[T["col_type"], "Pos", T["col_status"], T["col_dim"], T["col_area"], T["col_price"], T["col_link"]], 
+        disabled=[T["col_type"], "Pos", T["col_status"], T["col_dim"], T["col_area"], T["col_price"]], 
         use_container_width=True, key="windows_editor"
     )
     
@@ -594,7 +596,8 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
                 if new_pin: 
                     curr_x = placed_dict[item_id]['x'] if item_id in placed_dict else 0
                     curr_y = placed_dict[item_id]['y'] if item_id in placed_dict else 0
-                    state['man_x'] = curr_x; state['man_y'] = curr_y
+                    state['man_x'] = curr_x
+                    state['man_y'] = curr_y
                 else: 
                     state['man_x'] = None; state['man_y'] = None
                 changes_made = True
@@ -615,7 +618,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     df_gaps_data = []
     for g in gaps:
         area_m2 = (g['w'] * g['h']) / 1000000
-        df_gaps_data.append({T["col_type"]: T["fill"], "Pos": "Gap", T["col_status"]: "⚠️", T["col_dim"]: f"{g['w']} x {g['h']}", T["col_area"]: f"{area_m2:.2f}", T["col_source"]: g['source'], T["col_price"]: "-"})
+        df_gaps_data.append({T["col_type"]: T["fill"], "Pos": "Gap", T["col_status"]: "⚠️", T["col_dim"]: f"{g['w']} x {g['h']}", T["col_area"]: f"{area_m2:.2f}", "Herkunft": g['source'], T["col_price"]: "-"})
     df_gaps = pd.DataFrame(df_gaps_data)
     final_export_df = pd.concat([export_data, df_gaps], ignore_index=True)
     final_export_df = final_export_df.drop(columns=['_color', T['col_layer'], T['col_pin'], T['col_rotate'], '📍 Man X', '📍 Man Y', T['col_force']], errors='ignore')
@@ -623,7 +626,7 @@ if st.session_state['is_loaded'] or len(st.session_state['custom_windows']) > 0:
     st.download_button(label=T["export_btn"], data=csv, file_name='stueckliste.csv', mime='text/csv', type="primary")
     
     st.subheader(T["gaps_header"])
-    if not df_gaps.empty: st.dataframe(df_gaps[[T["col_type"], T["col_dim"], T["col_area"], T["col_source"]]], hide_index=True, use_container_width=True)
+    if not df_gaps.empty: st.dataframe(df_gaps[[T["col_type"], T["col_dim"], T["col_area"], "Herkunft"]], hide_index=True, use_container_width=True)
     else: st.success(T["no_gaps"])
 else:
-    st.info("👈 " + T["search_header"])
+    st.info("👈 Bitte starte die Suche in der Seitenleiste.")
